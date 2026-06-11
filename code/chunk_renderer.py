@@ -29,8 +29,8 @@ class ChunkRenderer:
             if new_cam_offset:
                 self.prev_cam_offset = self.cam_offset
             if new_z_lvl:
-                self.prev_z_lvl = new_z_lvl
-
+                self.prev_z_lvl = self.proc_gen.z
+    
         for xyz in self.visible_chunks:
             self.screen.blit(
                 self.chunk_cache[xyz] if xyz in self.chunk_cache else self.get_chunk_img(*xyz), 
@@ -62,7 +62,7 @@ class ChunkRenderer:
         return img
     
     def get_img_path(self, tile_id):
-        img_name = self.proc_gen.id_names[tile_id]
+        img_name = self.proc_gen.id_tiles[tile_id]
         path = '../graphics/terrain/'
         for k in self.terrain_types:
             if img_name in self.terrain_types[k]:
