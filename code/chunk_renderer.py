@@ -4,8 +4,8 @@ from math import ceil
 from settings import TILE_SIZE, RES, SURFACES, ELEVATIONS, TREES, LIQUIDS, MAP_SIZE
 
 class ChunkRenderer:
-    def __init__(self, screen, proc_gen, assets, cam_offset):
-        self.screen = screen
+    def __init__(self, world_surf, proc_gen, assets, cam_offset):
+        self.world_surf = world_surf
         self.proc_gen = proc_gen
         self.assets = assets
         self.cam_offset, self.prev_cam_offset = cam_offset, pg.Vector2()
@@ -17,7 +17,7 @@ class ChunkRenderer:
         self.chunk_cache = {}
         self.max_chunk_px_x = (MAP_SIZE[0] * TILE_SIZE) // self.chunk_px_size
         self.max_chunk_px_y = (MAP_SIZE[1] * TILE_SIZE) // self.chunk_px_size
-        self.prev_z_lvl = self.proc_gen.z
+        self.prev_z_lvl = None
         
         self.terrain_types = {'surfaces': SURFACES, 'elevations': ELEVATIONS, 'trees': TREES, 'liquids': LIQUIDS}
 
@@ -32,10 +32,7 @@ class ChunkRenderer:
                 self.prev_z_lvl = self.proc_gen.z
     
         for xyz in self.visible_chunks:
-            self.screen.blit(
-                self.chunk_cache[xyz] if xyz in self.chunk_cache else self.get_chunk_img(*xyz), 
-                pg.Vector2(xyz[0:2]) - self.cam_offset
-            )
+            self.world_surf.blit(self.chunk_cache[xyz] if xyz in self.chunk_cache else self.get_chunk_img(*xyz), xyz[0:2])
             
     def get_visible_chunks(self, offset_x, offset_y):
         start_x = max(0, min(int(offset_x) // self.chunk_px_size, self.max_chunk_px_x))

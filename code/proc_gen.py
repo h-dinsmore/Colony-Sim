@@ -97,7 +97,7 @@ class ProcGen:
                     tile_map[:, :, min_z:max_z][(z_slice > tmin) & (z_slice < tmax)] = self.tile_ids[tile]
                 min_z = max_z
 
-    def update(self):
+    def check_keyboard(self):
         if self.keyboard.pressed_keys[KEY_BINDINGS['+x']]:
             self.x = (self.x + 1) % MAP_SIZE[0]
         if self.keyboard.pressed_keys[KEY_BINDINGS['-x']]:
@@ -112,3 +112,6 @@ class ProcGen:
             self.z = (self.z + 1) % MAP_SIZE[2]
         if self.keyboard.pressed_keys[KEY_BINDINGS['-z']]:
             self.z = (self.z - 1) % MAP_SIZE[2]     
+
+    def update(self):
+        self.check_keyboard()

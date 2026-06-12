@@ -10,10 +10,11 @@ KEY_BINDINGS = {
     '+y': pg.K_s,
     '+z': pg.K_UP,
     '-z': pg.K_DOWN,
-    'drop item': pg.K_BACKSPACE
+    'drop item': pg.K_BACKSPACE,
+    'reset zoom': pg.K_RALT
 }
 
-MAP_SIZE = (400, 400, 4) # TODO: change after fixing procgen
+MAP_SIZE = (400, 400, 5) # TODO: change after fixing procgen
 TILE_SIZE = 16
 SEA_LVL = 0
 
