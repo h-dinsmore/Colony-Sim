@@ -1,7 +1,7 @@
 import pygame as pg
 import sys
 
-from settings import RES, FPS, MAP_SIZE, TILE_SIZE
+from settings import RES, FPS, MAP_PX_SIZE, TILE_SIZE
 from assets import Assets
 from camera import Camera
 from input import Keyboard, Mouse
@@ -13,7 +13,8 @@ class Game:
         pg.init()
         pg.display.set_caption('colony sim')
         self.screen = pg.display.set_mode(RES)
-        self.world_surf, self.visible_surf = pg.Surface((MAP_SIZE[0] * TILE_SIZE, MAP_SIZE[1] * TILE_SIZE)), pg.Surface(RES)
+        self.world_surf = pg.Surface(MAP_PX_SIZE[:2])
+        self.visible_surf = pg.Surface(RES)
         self.clock = pg.time.Clock()
         self.running = True
 
@@ -22,7 +23,7 @@ class Game:
         
         self.keyboard = Keyboard()
         
-        self.cam = Camera((pg.Vector2(MAP_SIZE[:2]) // 2) * TILE_SIZE, self.keyboard)
+        self.cam = Camera(pg.Vector2(RES) / 2, self.keyboard)
         self.cam_offset = None
         self.zoom_scale = None
 
@@ -31,26 +32,20 @@ class Game:
         self.proc_gen = ProcGen(self.keyboard)
         self.z = None
 
-        self.chunk_renderer = ChunkRenderer(self.world_surf, self.proc_gen, self.assets, self.cam.offset)
+        self.chunk_renderer = ChunkRenderer(self.world_surf, self.proc_gen, self.assets, self.cam)
 
     def update_visible_surf(self): 
-        dif_offset = self.cam.offset != self.cam_offset
-        dif_zoom = self.cam.zoom_scale != self.zoom_scale
-        dif_z = self.proc_gen.z != self.z
-        if dif_offset or dif_zoom or dif_z:
-            if dif_offset:
-                self.cam_offset = self.cam.offset.copy()
-            if dif_zoom:
-                self.zoom_scale = self.cam.zoom_scale
-            if dif_z:
-                self.z = self.proc_gen.z
-
-            return pg.transform.scale(
-                self.world_surf.subsurface(self.cam_offset, (round(RES[0] / self.zoom_scale), round(RES[1] / self.zoom_scale))), RES
-            )
+        scaled_res_x, scaled_res_y = round(RES[0] / self.cam.zoom_scale), round(RES[1] / self.cam.zoom_scale)
+        max_x, max_y = self.world_surf.width - scaled_res_x, self.world_surf.height - scaled_res_y
+        cam_x, cam_y = self.cam.offset
+        return pg.transform.scale(
+            self.world_surf.subsurface(
+                (max(0, min(cam_x, max_x)), max(0, min(cam_y, max_y))), 
+                (scaled_res_x, scaled_res_y)
+            ), 
+            RES
+        )
         
-        return self.visible_surf
-
     def update(self):
         self.clock.tick(FPS) 
         self.screen.fill((0, 0, 0))
@@ -77,7 +72,7 @@ class Game:
                 if event.type == pg.MOUSEWHEEL:
                     self.cam.zoom_scale = max(
                         self.cam.min_zoom_scale, 
-                        min(self.cam.zoom_scale + event.y * 0.01, self.cam.max_zoom_scale)
+                        min(self.cam.zoom_scale + (event.y * 0.01), self.cam.max_zoom_scale)
                     )
             self.update()
         pg.quit()

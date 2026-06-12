@@ -14,8 +14,10 @@ KEY_BINDINGS = {
     'reset zoom': pg.K_RALT
 }
 
-MAP_SIZE = (400, 400, 5) # TODO: change after fixing procgen
 TILE_SIZE = 16
+MAP_TILE_SIZE = (400, 400, 5) # TODO: change after fixing procgen
+MAP_PX_SIZE = (MAP_TILE_SIZE[0] * TILE_SIZE, MAP_TILE_SIZE[1] * TILE_SIZE, MAP_TILE_SIZE[2] * TILE_SIZE)
+
 SEA_LVL = 0
 
 WORLD_GEN_NOISE = {

@@ -1,51 +1,56 @@
 import pygame as pg
 from math import ceil
 
-from settings import TILE_SIZE, RES, SURFACES, ELEVATIONS, TREES, LIQUIDS, MAP_SIZE
+from settings import TILE_SIZE, RES, SURFACES, ELEVATIONS, TREES, LIQUIDS, MAP_PX_SIZE
 
 class ChunkRenderer:
-    def __init__(self, world_surf, proc_gen, assets, cam_offset):
+    def __init__(self, world_surf, proc_gen, assets, cam):
         self.world_surf = world_surf
         self.proc_gen = proc_gen
         self.assets = assets
-        self.cam_offset, self.prev_cam_offset = cam_offset, pg.Vector2()
+        self.cam = cam 
+        self.prev_cam_offset = pg.Vector2()
         
         self.chunk_tile_size = 32
         self.chunk_px_size = self.chunk_tile_size * TILE_SIZE
-        self.screen_chunks = ceil(RES[0] / self.chunk_px_size) + 5, ceil(RES[1] / self.chunk_px_size) + 5
         self.visible_chunks = []
         self.chunk_cache = {}
-        self.max_chunk_px_x = (MAP_SIZE[0] * TILE_SIZE) // self.chunk_px_size
-        self.max_chunk_px_y = (MAP_SIZE[1] * TILE_SIZE) // self.chunk_px_size
+        self.max_chunk_px_x = MAP_PX_SIZE[0] // self.chunk_px_size
+        self.max_chunk_px_y = MAP_PX_SIZE[1] // self.chunk_px_size
         self.prev_z_lvl = None
         
         self.terrain_types = {'surfaces': SURFACES, 'elevations': ELEVATIONS, 'trees': TREES, 'liquids': LIQUIDS}
 
     def render(self):
-        new_cam_offset = self.cam_offset != self.prev_cam_offset
+        new_cam_offset = self.cam.offset != self.prev_cam_offset
         new_z_lvl = self.proc_gen.z != self.prev_z_lvl
         if new_cam_offset or new_z_lvl:
-            self.visible_chunks = self.get_visible_chunks(*self.cam_offset)
+            self.visible_chunks = self.get_visible_chunks()
             if new_cam_offset:
-                self.prev_cam_offset = self.cam_offset
+                self.prev_cam_offset = self.cam.offset.copy()
             if new_z_lvl:
                 self.prev_z_lvl = self.proc_gen.z
     
         for xyz in self.visible_chunks:
             self.world_surf.blit(self.chunk_cache[xyz] if xyz in self.chunk_cache else self.get_chunk_img(*xyz), xyz[0:2])
             
-    def get_visible_chunks(self, offset_x, offset_y):
+    def get_visible_chunks(self):
+        screen_chunks_x = (ceil(RES[0] / self.cam.zoom_scale) // self.chunk_px_size) + 2
+        screen_chunks_y = (ceil(RES[1] / self.cam.zoom_scale) // self.chunk_px_size) + 2
+        
+        offset_x, offset_y = self.cam.offset
         start_x = max(0, min(int(offset_x) // self.chunk_px_size, self.max_chunk_px_x))
         start_y = max(0, min(int(offset_y) // self.chunk_px_size, self.max_chunk_px_y))
+
         return [
             ((start_x + x) * self.chunk_px_size, (start_y + y) * self.chunk_px_size, self.proc_gen.z)
-            for x in range(-1, self.screen_chunks[0]) for y in range(-1, self.screen_chunks[1]) 
+            for x in range(screen_chunks_x) for y in range(screen_chunks_y) 
         ]
 
     def get_chunk_img(self, chunk_x, chunk_y, chunk_z):
         img = pg.Surface((
-            max(0, min(self.chunk_px_size, (MAP_SIZE[0] * TILE_SIZE) - chunk_x)), 
-            max(0, min(self.chunk_px_size, (MAP_SIZE[1] * TILE_SIZE) - chunk_y))
+            max(0, min(self.chunk_px_size, MAP_PX_SIZE[0] - chunk_x)), 
+            max(0, min(self.chunk_px_size, MAP_PX_SIZE[1] - chunk_y))
         ), pg.SRCALPHA)
 
         tile_x, tile_y = chunk_x // TILE_SIZE, chunk_y // TILE_SIZE
