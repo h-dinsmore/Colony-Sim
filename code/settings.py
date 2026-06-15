@@ -15,13 +15,14 @@ KEY_BINDINGS = {
 }
 
 TILE_SIZE = 16
-MAP_TILE_SIZE = (400, 400, 5) # TODO: change after fixing procgen
+MAP_TILE_SIZE = (256, 256, 32)
 MAP_PX_SIZE = (MAP_TILE_SIZE[0] * TILE_SIZE, MAP_TILE_SIZE[1] * TILE_SIZE, MAP_TILE_SIZE[2] * TILE_SIZE)
 
-SEA_LVL = 0
+SEA_LVL = MAP_TILE_SIZE[2] // 3
 
-WORLD_GEN_NOISE = {
+WORLD_GEN_NOISE = { 
     'elev': {'scale': 350, 'octaves': 5, 'persistence': 0.7, 'lacunarity': 2.0},
+    'surface height': {'scale': 350, 'octaves': 3, 'persistence': 0.7, 'lacunarity': 2.0},
     'temp': {'scale': 400, 'octaves': 3, 'persistence': 0.4, 'lacunarity': 2.0},
     'precip': {'scale': 300, 'octaves': 3, 'persistence': 0.5, 'lacunarity': 2.0},
     'veg': {'scale': 200, 'octaves': 4, 'persistence': 0.6, 'lacunarity': 2.0},
@@ -36,6 +37,7 @@ BIOMES = {
         'geo noise': {'elev': (0.0, 0.15), 'temp': (0.0, 0.1), 'precip': (0.0, 0.1), 'veg': (0.0, 0.15)},
         'surface noise': {'scale': 450, 'octaves': 3, 'persistence': 1.2, 'lacunarity': 1.5},
         'cave noise': {'scale': 70.0, 'octaves': 2, 'persistence': 0.6, 'lacunarity': 1.8, 'threshold': 0.35},
+        'surface detail': {'grass': (0.0, 0.6), 'small rock': (0.6, 0.75), 'mushroom': (0.75, 0.9), 'large rock': (0.9, 1.0)},
         'z layers': {
             0.2: {'ice': (0.0, 0.35), 'snow': (0.35, 0.65), 'dirt': (0.65, 0.9), 'stone': (0.9, 1.0)},
             0.4: {'ice': (0.0, 0.25), 'snow': (0.25, 0.5), 'dirt': (0.5, 0.75), 'stone': (0.75, 0.95), 'fossil': (0.95, 1.0)},
@@ -49,6 +51,7 @@ BIOMES = {
         'geo noise': {'elev': (0.6, 0.75), 'temp': (0.15, 0.3), 'precip': (0.3, 0.5), 'veg': (0.45, 0.6)},
         'surface noise': {'scale': 300, 'octaves': 4, 'persistence': 1.3, 'lacunarity': 1.6},
         'cave noise': {'scale': 40.0, 'octaves': 4, 'persistence': 1.6, 'lacunarity': 1.9, 'threshold': 0.4},
+        'surface detail': {'grass': (0.0, 0.4), 'tree': (0.4, 0.75), 'plant': (0.75, 0.95), 'mushroom': (0.95, 1.0)},
         'z layers': {
             0.2: {'dirt': (0.0, 0.4), 'stone': (0.4, 0.7), 'snow': (0.7, 0.9), 'ice': (0.9, 1.0)},
             0.4: {'dirt': (0.0, 0.4), 'stone': (0.4, 0.75), 'ice': (0.75, 0.9), 'amber': (0.9, 1.0)},
@@ -62,6 +65,7 @@ BIOMES = {
         'geo noise': {'elev': (0.4, 0.6), 'temp': (0.3, 0.5), 'precip': (0.5, 0.65), 'veg': (0.6, 0.75)},
         'surface noise': {'scale': 350, 'octaves': 3, 'persistence': 1.5, 'lacunarity': 2.0},
         'cave noise': {'scale': 30.0, 'octaves': 4, 'persistence': 1.6, 'lacunarity': 1.3, 'threshold': 0.55},
+        'surface detail': {'tree': (0.0, 0.75), 'plant': (0.75, 0.9), 'grass': (0.9, 1.0)},
         'z layers': {
             0.2: {'dirt': (0.0, 0.55), 'stone': (0.55, 0.8), 'clay': (0.8, 1.0)},
             0.4: {'dirt': (0.0, 0.45), 'stone': (0.45, 0.75), 'clay': (0.75, 0.9), 'amber': (0.9, 1.0)},
@@ -75,6 +79,7 @@ BIOMES = {
         'geo noise': {'elev': (0.15, 0.25), 'temp': (0.4, 0.6), 'precip': (0.25, 0.4), 'veg': (0.25, 0.4)},
         'surface noise': {'scale': 400, 'octaves': 3, 'persistence': 1.2, 'lacunarity': 1.5},
         'cave noise': {'scale': 60.0, 'octaves': 3, 'persistence': 0.7, 'lacunarity': 0.9, 'threshold': 0.6},
+        'surface detail': {'grass': (0.0, 0.7), 'plant': (0.6, 0.9), 'tree': (0.9, 1.0)},
         'z layers': {
             0.2: {'dirt': (0.0, 0.7), 'clay': (0.7, 0.9), 'stone': (0.9, 1.0)},
             0.4: {'dirt': (0.0, 0.55), 'stone': (0.55, 0.8), 'clay': (0.8, 0.95), 'fossil': (0.95, 1.0)},
@@ -88,6 +93,7 @@ BIOMES = {
         'geo noise': {'elev': (0.35, 0.5), 'temp': (0.85, 1.0), 'precip': (0.0, 0.1), 'veg': (0.0, 0.1)},
         'surface noise': {'scale': 375, 'octaves': 4, 'persistence': 0.9, 'lacunarity': 1.4},
         'cave noise': {'scale': 60.0, 'octaves': 3, 'persistence': 0.7, 'lacunarity': 0.9, 'threshold': 0.6},
+        'surface detail': {'cactus': (0.0, 0.3), 'desert plant': (0.3, 0.45), 'small rock': (0.45, 0.65), 'large rock': (0.65, 0.75)},
         'z layers': {
             0.2: {'sand': (0.0, 0.65), 'sandstone': (0.65, 0.9), 'clay': (0.9, 1.0)},
             0.4: {'sandstone': (0.0, 0.45), 'sand': (0.45, 0.65), 'clay': (0.65, 0.8), 'copper': (0.8, 1.0)},
@@ -101,6 +107,7 @@ BIOMES = {
         'geo noise': {'elev': (0.65, 0.8), 'temp': (0.7, 0.85), 'precip': (0.8, 1.0), 'veg': (0.8, 1.0)},
         'surface noise': {'scale': 350, 'octaves': 3, 'persistence': 1.6, 'lacunarity': 1.6},
         'cave noise': {'scale': 60.0, 'octaves': 3, 'persistence': 0.7, 'lacunarity': 0.9, 'threshold': 0.6},
+        'surface detail': {'tree': (0.0, 0.7), 'plant': (0.7, 0.9), 'grass': (0.9, 1.0)},
         'z layers': {
             0.2: {'dirt': (0.0, 0.55), 'clay': (0.55, 0.8), 'stone': (0.8, 0.9), 'sand': (0.9, 1.0)},
             0.4: {'dirt': (0.0, 0.45), 'clay': (0.45, 0.7), 'stone': (0.7, 0.9), 'coal': (0.9, 1.0)},
@@ -138,5 +145,7 @@ SURFACES = {
 ELEVATIONS = {'foothills', 'hills', 'mountains', 'mountain peak', 'volcano'}
 
 TREES = {'oak', 'evergreen', 'bare', 'stump', 'forest'}
+
+PLANTS = {}
 
 LIQUIDS = {'water', 'lava', 'oil'}

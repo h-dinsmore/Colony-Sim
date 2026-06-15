@@ -1,7 +1,7 @@
 import pygame as pg
 from math import ceil
 
-from settings import TILE_SIZE, RES, SURFACES, ELEVATIONS, TREES, LIQUIDS, MAP_PX_SIZE
+from settings import TILE_SIZE, RES, SURFACES, ELEVATIONS, TREES, LIQUIDS, MAP_PX_SIZE, MAP_TILE_SIZE
 
 class ChunkRenderer:
     def __init__(self, world_surf, proc_gen, assets, cam):
@@ -19,20 +19,22 @@ class ChunkRenderer:
         self.max_chunk_px_y = MAP_PX_SIZE[1] // self.chunk_px_size
         self.prev_z_lvl = None
         
-        self.terrain_types = {'surfaces': SURFACES, 'elevations': ELEVATIONS, 'trees': TREES, 'liquids': LIQUIDS}
+        self.terrain_types = {'surfaces': SURFACES.keys(), 'elevations': ELEVATIONS, 'trees': TREES, 'liquids': LIQUIDS}
 
     def render(self):
         new_cam_offset = self.cam.offset != self.prev_cam_offset
         new_z_lvl = self.proc_gen.z != self.prev_z_lvl
         if new_cam_offset or new_z_lvl:
             self.visible_chunks = self.get_visible_chunks()
+
             if new_cam_offset:
                 self.prev_cam_offset = self.cam.offset.copy()
+
             if new_z_lvl:
                 self.prev_z_lvl = self.proc_gen.z
-    
+
         for xyz in self.visible_chunks:
-            self.world_surf.blit(self.chunk_cache[xyz] if xyz in self.chunk_cache else self.get_chunk_img(*xyz), xyz[0:2])
+            self.world_surf.blit(self.chunk_cache[xyz] if xyz in self.chunk_cache else self.get_chunk_img(*xyz), xyz[:2])
             
     def get_visible_chunks(self):
         screen_chunks_x = (ceil(RES[0] / self.cam.zoom_scale) // self.chunk_px_size) + 2
@@ -41,9 +43,10 @@ class ChunkRenderer:
         offset_x, offset_y = self.cam.offset
         start_x = max(0, min(int(offset_x) // self.chunk_px_size, self.max_chunk_px_x))
         start_y = max(0, min(int(offset_y) // self.chunk_px_size, self.max_chunk_px_y))
+        z = min(self.proc_gen.z, MAP_TILE_SIZE[2] - 1)
 
         return [
-            ((start_x + x) * self.chunk_px_size, (start_y + y) * self.chunk_px_size, self.proc_gen.z)
+            ((start_x + x) * self.chunk_px_size, (start_y + y) * self.chunk_px_size, z)
             for x in range(screen_chunks_x) for y in range(screen_chunks_y) 
         ]
 
@@ -56,8 +59,7 @@ class ChunkRenderer:
         tile_x, tile_y = chunk_x // TILE_SIZE, chunk_y // TILE_SIZE
         for x in range(img.width // TILE_SIZE):
             for y in range(img.height // TILE_SIZE):
-                tile_id = self.proc_gen.tile_map[tile_x + x, tile_y + y, chunk_z]
-                if tile_id != self.proc_gen.tile_ids['air']: 
+                if (tile_id := self.proc_gen.tile_map[tile_x + x, tile_y + y, chunk_z]) != self.proc_gen.tile_ids['air']:
                     img.blit(self.assets.get_img(self.get_img_path(tile_id)), (x * TILE_SIZE, y * TILE_SIZE))
         
         self.chunk_cache[(chunk_x, chunk_y, chunk_z)] = img
@@ -69,3 +71,4 @@ class ChunkRenderer:
         for k in self.terrain_types:
             if img_name in self.terrain_types[k]:
                 return path + k + f'/{img_name}.png'
+            

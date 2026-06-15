@@ -24,6 +24,7 @@ class Assets:
 
         self.colors = {
             'text': 'darkorchid',
+            'sky': 'lightskyblue'
         }
         
         self.font_sizes = {'default': 16}

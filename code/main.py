@@ -20,6 +20,7 @@ class Game:
 
         self.assets = Assets()
         self.default_font = self.assets.fonts['default']
+        self.sky_rgb = self.assets.colors['sky']
         
         self.keyboard = Keyboard()
         
@@ -48,7 +49,8 @@ class Game:
         
     def update(self):
         self.clock.tick(FPS) 
-        self.screen.fill((0, 0, 0))
+        self.screen.fill(self.sky_rgb)
+        self.world_surf.fill(self.sky_rgb)
         
         self.keyboard.update()
         self.mouse.update()
@@ -74,7 +76,9 @@ class Game:
                         self.cam.min_zoom_scale, 
                         min(self.cam.zoom_scale + (event.y * 0.01), self.cam.max_zoom_scale)
                     )
+                    
             self.update()
+
         pg.quit()
         sys.exit()
 
