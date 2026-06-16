@@ -1,6 +1,6 @@
 import numpy as np
 import noise
-from random import randint
+from random import randint, choice
 
 from settings import *
 
@@ -20,12 +20,13 @@ class ProcGen:
             self.id_biomes[i] = k
             
         self.tile_ids, self.id_tiles = {'air': 0}, {0: 'air'}
-        for i, k in enumerate(SURFACES.keys() | ELEVATIONS | TREES | LIQUIDS):
+        for i, k in enumerate(SOLID_TILES.keys() | ELEVATIONS | TREES | LIQUIDS | SURFACE_TERRAIN):
             self.tile_ids[k] = i + 1
             self.id_tiles[i + 1] = k
 
         self.biome_map = self.get_biome_map()
         self.biome_surface_heights = {biome: None for biome in BIOMES}
+        self.placed_biomes = set()
         self.tile_map = self.get_tile_map()
         self.biome_in = None
         self.x, self.y, self.z = 0, 0, MAP_TILE_SIZE[2] - 1  
@@ -88,10 +89,11 @@ class ProcGen:
                         noise_params['lacunarity'],
                         base=self.seed
                     )
-
+        
         noise_map = self.normalize_arr(noise_map)
+        self.placed_biomes = set(b for b in BIOMES if self.biome_surface_heights[b] is not None)
         self.place_solid_tiles(tile_map, noise_map)
-        self.place_plants(tile_map)
+        self.place_surface_terrain(tile_map)
         return tile_map
     
     def get_biome_surface_heights(self, biome):
@@ -100,22 +102,43 @@ class ProcGen:
         return (surface_height_noise * z_lvls).astype(np.uint8)
     
     def place_solid_tiles(self, tile_map, noise_map):
-        for biome in [b for b in BIOMES if self.biome_surface_heights[b] is not None]: # in case a biome doesn't appear
+        for biome in self.placed_biomes:
             surface_height = min(self.biome_surface_heights[biome].max(), MAP_TILE_SIZE[2])
             min_z = MAP_TILE_SIZE[2] - surface_height # the bottom of the world is labeled z level 0 but for indexing the noise map 0 is the top
             biome_mask = self.biome_map[:, :, None] == self.biome_ids[biome] # adding an extra axis to broadcast with the noise map
             
             for z_pct, tile_data in BIOMES[biome]['z layers'].items():
-                max_z = min(int(surface_height * z_pct), surface_height - 1)
+                max_z = min(int(surface_height * z_pct), surface_height)
                 noise_slice = noise_map[:, :, min_z:max_z] 
                 
-                for tile, (tmin, tmax) in tile_data.items():
-                    tile_map[:, :, min_z:max_z][biome_mask & (noise_slice > tmin) & (noise_slice < tmax)] = self.tile_ids[tile]    
+                for tile, (noise_min, noise_max) in tile_data.items():
+                    tile_map[:, :, min_z:max_z][biome_mask & (noise_slice > noise_min) & (noise_slice < noise_max)] = self.tile_ids[tile]    
                 
                 min_z = max_z
 
-    def place_plants(self, tile_map):
-        pass
+    def place_surface_terrain(self, tile_map):
+        for biome in self.placed_biomes:
+            biome_mask = self.biome_map == self.biome_ids[biome]
+            surface_tiles = tile_map[:, :, MAP_TILE_SIZE[2] - 1] == biome_mask
+            
+            for tile, (noise_min, noise_max) in BIOMES[biome]['surface terrain'].items():
+                if (tile_id := self.get_biome_tile_id(biome, tile, noise_min, noise_max)):
+                    tile_map[:, :, MAP_TILE_SIZE[2] - 1][
+                        surface_tiles & (self.geo_maps['veg'] > noise_min) & (self.geo_maps['veg'] < noise_max)
+                    ] = tile_id
+                else: # keep the surface tile
+                    continue
+
+    def get_biome_tile_id(self, biome, tile, noise_min, noise_max):
+        if tile in {'snow', 'small rock', 'large rock', 'small mushroom', 'large mushroom', 'cactus'}:
+            return self.tile_ids[tile] # they don't change with the biomes
+        
+        if tile in {'plant', 'grass'}:
+            return self.tile_ids[f'{biome} {tile}']
+        
+        for tree, noise_range in BIOMES[biome]['tree variants'].items():
+            if noise_range[0] > noise_min and noise_range[1] < noise_max:
+                return self.tile_ids[f'{tree} {choice((0, 1))}'] if tree in {'maple', 'fir'} else self.tile_ids[tree]
 
     def check_keyboard(self):
         if self.keyboard.pressed_keys[KEY_BINDINGS['+x']]:

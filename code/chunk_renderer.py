@@ -1,7 +1,7 @@
 import pygame as pg
 from math import ceil
 
-from settings import TILE_SIZE, RES, SURFACES, ELEVATIONS, TREES, LIQUIDS, MAP_PX_SIZE, MAP_TILE_SIZE
+from settings import *
 
 class ChunkRenderer:
     def __init__(self, world_surf, proc_gen, assets, cam):
@@ -19,7 +19,13 @@ class ChunkRenderer:
         self.max_chunk_px_y = MAP_PX_SIZE[1] // self.chunk_px_size
         self.prev_z_lvl = None
         
-        self.terrain_types = {'surfaces': SURFACES.keys(), 'elevations': ELEVATIONS, 'trees': TREES, 'liquids': LIQUIDS}
+        self.terrain_types = {
+            'solid tiles': SOLID_TILES.keys(), 
+            'surface terrain': SURFACE_TERRAIN,
+            'elevations': ELEVATIONS, 
+            'trees': TREES, 
+            'liquids': LIQUIDS
+        }
 
     def render(self):
         new_cam_offset = self.cam.offset != self.prev_cam_offset
@@ -71,4 +77,3 @@ class ChunkRenderer:
         for k in self.terrain_types:
             if img_name in self.terrain_types[k]:
                 return path + k + f'/{img_name}.png'
-            
