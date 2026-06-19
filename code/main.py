@@ -25,13 +25,12 @@ class Game:
         self.keyboard = Keyboard()
         
         self.cam = Camera(pg.Vector2(RES) / 2, self.keyboard)
-        self.cam_offset = None
+
         self.zoom_scale = None
 
         self.mouse = Mouse(self.cam.offset)
 
         self.proc_gen = ProcGen(self.keyboard)
-        self.z = None
 
         self.chunk_renderer = ChunkRenderer(self.world_surf, self.proc_gen, self.assets, self.cam)
 

@@ -5,9 +5,8 @@ from random import randint, choice
 from settings import *
 
 class ProcGen:
-    def __init__(self, keyboard, seed=randint(1000, 5000)):
+    def __init__(self, keyboard):
         self.keyboard = keyboard
-        self.seed = seed
         
         self.noise_arr_dtype = np.float32
         self.geo_maps = {}
@@ -25,11 +24,12 @@ class ProcGen:
             self.id_tiles[i + 1] = k
 
         self.biome_map = self.get_biome_map()
-        self.biome_surface_heights = {biome: None for biome in BIOMES}
-        self.placed_biomes = set()
-        self.tile_map = self.get_tile_map()
+        self.biome_z_maps = {biome: self.get_biome_z_map(biome) for biome in BIOMES}
+        self.placed_biomes = set(biome for biome in BIOMES if self.biome_z_maps[biome] is not None)
         self.biome_in = None
-        self.x, self.y, self.z = 0, 0, MAP_TILE_SIZE[2] - 1  
+        
+        self.tile_map = self.get_tile_map()
+        self.x, self.y, self.z = 0, 0, MAP_TILE_SIZE[2] - 1
     
     def get_noise_arr(self, map_name):
         arr = np.empty(MAP_TILE_SIZE[:2], dtype=self.noise_arr_dtype)
@@ -42,18 +42,18 @@ class ProcGen:
                     noise_params['octaves'],
                     noise_params['persistence'],
                     noise_params['lacunarity'],
-                    base=self.seed
+                    repeatx=MAP_TILE_SIZE[0],
+                    repeaty=MAP_TILE_SIZE[1],
                 )
 
         if map_name == 'surface height':
-            arr += self.geo_maps['elev'] * 0.25
+            arr = np.minimum(arr + (self.geo_maps['elev'] * 0.25), 1.0)
 
         return self.normalize_arr(arr)
     
     def normalize_arr(self, arr):
         arr_min = arr.min()
-        arr = (arr - arr_min) / (arr.max() - arr_min)
-        return arr
+        return (arr - arr_min) / (arr.max() - arr_min)
     
     def get_biome_map(self):
         biome_map = np.empty(MAP_TILE_SIZE[:2], dtype=np.uint8)
@@ -72,63 +72,58 @@ class ProcGen:
     def get_tile_map(self):
         tile_map = np.zeros(MAP_TILE_SIZE, dtype=np.uint8)
         noise_map = np.zeros(MAP_TILE_SIZE, dtype=np.float32)
+
         for x in range(MAP_TILE_SIZE[0]):
             for y in range(MAP_TILE_SIZE[1]): 
-                biome = self.id_biomes[self.biome_map[x, y]]
+                biome = self.id_biomes[self.biome_map[x, y]] 
                 noise_params = BIOMES[biome]['surface noise']
-                
-                if self.biome_surface_heights[biome] is None:
-                    self.biome_surface_heights[biome] = self.get_biome_surface_heights(biome)
-
-                for z in range(MAP_TILE_SIZE[2] - self.biome_surface_heights[biome].max(), MAP_TILE_SIZE[2]): 
+    
+                for z in range(round(self.biome_z_maps[biome][x, y])):
                     noise_map[x, y, z] = noise.pnoise2(
                         x / noise_params['scale'],
                         y / noise_params['scale'],
                         noise_params['octaves'],
                         noise_params['persistence'],
                         noise_params['lacunarity'],
-                        base=self.seed
+                        repeatx=MAP_TILE_SIZE[0],
+                        repeaty=MAP_TILE_SIZE[1],
                     )
         
         noise_map = self.normalize_arr(noise_map)
-        self.placed_biomes = set(b for b in BIOMES if self.biome_surface_heights[b] is not None)
         self.place_solid_tiles(tile_map, noise_map)
         self.place_surface_terrain(tile_map)
         return tile_map
     
-    def get_biome_surface_heights(self, biome):
-        surface_height_noise = self.geo_maps['surface height'][self.biome_map == self.biome_ids[biome]]
-        z_lvls = round(MAP_TILE_SIZE[2] * surface_height_noise.max())
-        return (surface_height_noise * z_lvls).astype(np.uint8)
+    def get_biome_z_map(self, biome):
+        return np.where(
+            self.biome_map == self.biome_ids[biome], 
+            np.round(self.geo_maps['surface height'] * (MAP_TILE_SIZE[2] - 1)).astype(np.uint8), 0
+        )
     
     def place_solid_tiles(self, tile_map, noise_map):
+        min_z_arr = np.zeros(MAP_TILE_SIZE, dtype=np.uint8)
+        full_z_map = np.arange(MAP_TILE_SIZE[2]).reshape(1, 1, -1)
         for biome in self.placed_biomes:
-            surface_height = min(self.biome_surface_heights[biome].max(), MAP_TILE_SIZE[2])
-            min_z = MAP_TILE_SIZE[2] - surface_height # the bottom of the world is labeled z level 0 but for indexing the noise map 0 is the top
-            biome_mask = self.biome_map[:, :, None] == self.biome_ids[biome] # adding an extra axis to broadcast with the noise map
-            
+            biome_z_map = self.biome_z_maps[biome][:, :, None]
+            biome_mask = self.biome_map[:, :, None] == self.biome_ids[biome]
             for z_pct, tile_data in BIOMES[biome]['z layers'].items():
-                max_z = min(int(surface_height * z_pct), surface_height)
-                noise_slice = noise_map[:, :, min_z:max_z] 
-                
+                max_z_arr = np.round(biome_z_map * z_pct).astype(np.uint8)
+                z_mask = (full_z_map > min_z_arr) & (full_z_map < max_z_arr)
                 for tile, (noise_min, noise_max) in tile_data.items():
-                    tile_map[:, :, min_z:max_z][biome_mask & (noise_slice > noise_min) & (noise_slice < noise_max)] = self.tile_ids[tile]    
-                
-                min_z = max_z
+                    tile_map[biome_mask & z_mask & (noise_map > noise_min) & (noise_map < noise_max)] = self.tile_ids[tile] 
+                min_z_arr = max_z_arr
 
     def place_surface_terrain(self, tile_map):
         for biome in self.placed_biomes:
             biome_mask = self.biome_map == self.biome_ids[biome]
-            surface_tiles = tile_map[:, :, MAP_TILE_SIZE[2] - 1] == biome_mask
-            
+            z_map = self.biome_z_maps[biome]
             for tile, (noise_min, noise_max) in BIOMES[biome]['surface terrain'].items():
                 if (tile_id := self.get_biome_tile_id(biome, tile, noise_min, noise_max)):
-                    tile_map[:, :, MAP_TILE_SIZE[2] - 1][
-                        surface_tiles & (self.geo_maps['veg'] > noise_min) & (self.geo_maps['veg'] < noise_max)
-                    ] = tile_id
-                else: # keep the surface tile
-                    continue
-
+                    x, y = np.where((biome_mask & (self.geo_maps['veg'] > noise_min) & (self.geo_maps['veg'] < noise_max)))
+                    tile_map[x, y, z_map[x, y]] = tile_id
+                else:
+                    continue # keep the surface tile
+    
     def get_biome_tile_id(self, biome, tile, noise_min, noise_max):
         if tile in {'snow', 'small rock', 'large rock', 'small mushroom', 'large mushroom', 'cactus'}:
             return self.tile_ids[tile] # they don't change with the biomes
