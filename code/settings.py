@@ -11,18 +11,27 @@ KEY_BINDINGS = {
     '+z': pg.K_UP,
     '-z': pg.K_DOWN,
     'drop item': pg.K_BACKSPACE,
-    'reset zoom': pg.K_RALT
+    'reset zoom': pg.K_z,
+    'elevation view': pg.K_RALT
+
 }
 
 TILE_SIZE = 16
 MAP_TILE_SIZE = (128, 256, 16)
 MAP_PX_SIZE = (MAP_TILE_SIZE[0] * TILE_SIZE, MAP_TILE_SIZE[1] * TILE_SIZE, MAP_TILE_SIZE[2] * TILE_SIZE)
-
 SEA_LVL = MAP_TILE_SIZE[2] // 3
+Z_DIF_ICONS = {
+    (1, 3): 'foothills',
+    (3, 8): 'hills',
+    (8, 13): 'mountains',
+    (13, 16): 'mountain peak',
+    (-1, -8): 'shallow valley',
+    (-8, -16): 'deep valley'
+}
 
 WORLD_GEN_NOISE = {
     'elev': {'scale': 96, 'octaves': 5, 'persistence': 0.7, 'lacunarity': 2.0},
-    'surface height': {'scale': 88, 'octaves': 3, 'persistence': 0.7, 'lacunarity': 2.0},
+    'max z': {'scale': 88, 'octaves': 3, 'persistence': 0.7, 'lacunarity': 2.0},
     'temp': {'scale': 192, 'octaves': 3, 'persistence': 0.4, 'lacunarity': 2.0},
     'precip': {'scale': 160, 'octaves': 3, 'persistence': 0.5, 'lacunarity': 2.0},
     'veg': {'scale': 80, 'octaves': 4, 'persistence': 0.6, 'lacunarity': 2.0},
@@ -216,7 +225,7 @@ SOLID_TILES = {
     'topaz': {'hardness': 500, 'minimap rgb': ()}
 }
 
-ELEVATIONS = {'foothills', 'hills', 'mountains', 'mountain peak', 'volcano'}
+ELEVATIONS = {'foothills', 'hills', 'mountains', 'mountain peak', 'volcano', 'shallow valley', 'deep valley'}
 
 TREES = {'oak', 'evergreen', 'bare', 'stump', 'fir 0', 'fir 1', 'fruit', 'maple 0', 'maple 1', 'poplar', 'willow', 'palm 0', 'palm 1'}
 
