@@ -161,8 +161,13 @@ class ProcGen:
 
         if self.keyboard.pressed_keys[KEY_BINDINGS['+z']]:
             self.z = (self.z + 1) % MAP_TILE_SIZE[2]
+            if self.z_dif_view:
+                self.z_dif_map = self.get_z_dif_map()
+
         if self.keyboard.pressed_keys[KEY_BINDINGS['-z']]:
-            self.z = (self.z - 1) % MAP_TILE_SIZE[2]    
+            self.z = (self.z - 1) % MAP_TILE_SIZE[2]  
+            if self.z_dif_view:
+                self.z_dif_map = self.get_z_dif_map()  
 
         if self.keyboard.pressed_keys[KEY_BINDINGS['elevation view']]:
             self.z_dif_view = not self.z_dif_view

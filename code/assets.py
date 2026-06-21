@@ -34,7 +34,7 @@ class Assets:
     def load_img(dir_path):
         img = pg.transform.scale(pg.image.load(dir_path).convert_alpha(), (TILE_SIZE, TILE_SIZE))
         if 'elevations' in dir_path:
-            img.set_alpha(128)
+            img.set_alpha(175 if 'valley' in dir_path else 200)
         return img
     
     def load_folder(self, dir_path):
