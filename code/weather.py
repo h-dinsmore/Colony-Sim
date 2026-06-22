@@ -5,25 +5,29 @@ from settings import RES
 from alarm import Alarm
 
 class Weather:
-    def __init__(self, screen):
-        self.sky = Sky(screen)
+    def __init__(self, world_surf, cam):
+        self.sky = Sky(world_surf, cam)
 
     def update(self):
         self.sky.update()
 
 class Sky:
-    def __init__(self, screen):
-        self.screen = screen
+    def __init__(self, world_surf, cam):
+        self.world_surf = world_surf
+        self.cam = cam
 
         self.rgb = np.array(pg.Color('lightskyblue')[:3], dtype=int) 
         self.max_rgb = self.rgb.copy()
-        self.min_rgb = np.array([0, 0, 16], dtype=int)
+        self.min_rgb = np.array([0, 0, 64], dtype=int)
         self.rgb_update_dir = -1
         
         self.tint = False
-        self.tint_img = pg.Surface(screen.size)
-        self.tint_color = 'lightpink'
-        self.tint_max_rgb = (50, 50, 100)
+        self.tint_img = pg.Surface(RES, pg.SRCALPHA)
+        self.tint_img.fill('lightpink')
+        self.rgbs_activate_tint = {
+            'sunrise': np.array([88, 88, 152], dtype=np.uint8), 
+            'sunset': np.array([48, 119, 163], dtype=np.uint8)
+        }
         self.tint_alpha = 0
         self.tint_update_dir = 1
 
@@ -38,32 +42,46 @@ class Sky:
             self.rgb_update_dir *= -1
     
     def check_tint(self):
-        self.tint = all(0 <= self.rgb[i] <= self.tint_max_rgb[i] for i in range(3))
+        if self.tint:
+            self.tint = self.tint_update_dir > 0 or self.tint_alpha > 0
+        else:
+            self.tint = np.array_equal(self.rgb, self.rgbs_activate_tint['sunrise']) or np.array_equal(self.rgb, self.rgbs_activate_tint['sunset'])
+        
         if self.tint:
             if not self.alarms['update tint'].running:
                 self.alarms['update tint'].start()
-                self.tint_alpha = 50
-                self.tint_img.fill('lightpink')
         else:
             if self.alarms['update tint'].running:
                 self.alarms['update tint'].end()
+                self.tint_update_dir = 1
+                self.tint_alpha = 0
+                self.world_surf.fill(self.rgb)
 
     def update_tint_img(self):
-        if (self.tint_alpha == 0 and self.tint_update_dir == -1) or (self.tint_alpha == 255 and self.tint_update_dir == 1):
+        if self.tint_alpha == 255:
             self.tint_update_dir *= -1
-    
+        
         self.tint_alpha += self.tint_update_dir
         self.tint_img.set_alpha(self.tint_alpha)
 
     def update_screen(self):
-        self.screen.fill(self.rgb)
+        subsurf = self.world_surf.subsurface(
+            self.cam.offset, 
+            (RES[0] / self.cam.zoom_scale, RES[1] / self.cam.zoom_scale)
+        )
+
         if self.tint:
-            self.screen.blit(self.tint_img, (0, 0), special_flags=pg.BLEND_RGBA_ADD)
-        
+            self.tint_img = pg.transform.scale(self.tint_img, subsurf.size)
+            self.tint_img.set_alpha(self.tint_alpha)
+            subsurf.blit(self.tint_img, (0, 0))
+        else:
+            subsurf.fill(self.rgb)
+
     def update(self):
         self.check_tint()
-
-        for alarm in self.alarms.values():
-            alarm.update()
+        if self.tint:
+            self.alarms['update tint'].update()
+        else:
+            self.alarms['update rgb'].update()
 
         self.update_screen()

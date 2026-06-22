@@ -16,25 +16,29 @@ class Game:
         self.clock = pg.time.Clock()
         self.running = True
         self.screen = pg.display.set_mode(RES)
-
-        self.world_surf = pg.Surface(MAP_PX_SIZE[:2])
-        self.visible_surf = pg.Surface(RES)
-        
-        self.assets = Assets()
-        self.default_font = self.assets.fonts['default']
         
         self.keyboard = Keyboard()
         
         self.cam = Camera(pg.Vector2(RES) / 2, self.keyboard)
         self.zoom_scale = None
-
+        
         self.mouse = Mouse(self.cam.offset)
 
+        self.world_surf = pg.Surface(
+            (MAP_PX_SIZE[0] / self.cam.min_zoom_scale, 
+             MAP_PX_SIZE[1] / self.cam.min_zoom_scale), 
+            pg.SRCALPHA
+        )
+        self.visible_surf = None
+        
+        self.assets = Assets()
+        self.default_font = self.assets.fonts['default']
+        
         self.proc_gen = ProcGen(self.keyboard)
 
         self.chunk_renderer = ChunkRenderer(self.world_surf, self.proc_gen, self.assets, self.cam)
 
-        self.weather = Weather(self.world_surf)
+        self.weather = Weather(self.world_surf, self.cam)
 
     def update_visible_surf(self): 
         scaled_res_x, scaled_res_y = round(RES[0] / self.cam.zoom_scale), round(RES[1] / self.cam.zoom_scale)
@@ -52,7 +56,6 @@ class Game:
         self.clock.tick(FPS) 
         
         self.weather.update()
-        
         self.keyboard.update()
         self.mouse.update()
         self.proc_gen.update()
@@ -61,24 +64,23 @@ class Game:
 
         self.visible_surf = self.update_visible_surf()
         self.screen.blit(self.visible_surf, self.visible_surf.get_rect(topleft=(0, 0)))
-        
         self.screen.blit(
             self.default_font.render(
                 f'FPS: {self.clock.get_fps():.2f} x: {self.proc_gen.x}, y: {self.proc_gen.y} z: {self.proc_gen.z}', 
                 True, 'white'), (0, 0)
         )
-        
         pg.display.flip()
 
     def run(self):
         while self.running:
+            self.update_screen = False
             for event in pg.event.get():
                 self.running = not (event.type == pg.QUIT or (event.type == pg.KEYDOWN and event.key == pg.K_ESCAPE))
                 if event.type == pg.MOUSEWHEEL:
                     self.cam.zoom_scale = max(
                         self.cam.min_zoom_scale, 
                         min(self.cam.zoom_scale + (event.y * 0.01), self.cam.max_zoom_scale)
-                    )
+                    ) 
                     
             self.update()
 
