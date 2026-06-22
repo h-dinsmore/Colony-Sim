@@ -7,25 +7,25 @@ from camera import Camera
 from input import Keyboard, Mouse
 from proc_gen import ProcGen
 from chunk_renderer import ChunkRenderer
+from weather import Weather
 
 class Game:
     def __init__(self):
         pg.init()
         pg.display.set_caption('colony sim')
-        self.screen = pg.display.set_mode(RES)
-        self.world_surf = pg.Surface(MAP_PX_SIZE[:2])
-        self.visible_surf = pg.Surface(RES)
         self.clock = pg.time.Clock()
         self.running = True
+        self.screen = pg.display.set_mode(RES)
 
+        self.world_surf = pg.Surface(MAP_PX_SIZE[:2])
+        self.visible_surf = pg.Surface(RES)
+        
         self.assets = Assets()
         self.default_font = self.assets.fonts['default']
-        self.sky_rgb = self.assets.colors['sky']
         
         self.keyboard = Keyboard()
         
         self.cam = Camera(pg.Vector2(RES) / 2, self.keyboard)
-
         self.zoom_scale = None
 
         self.mouse = Mouse(self.cam.offset)
@@ -33,6 +33,8 @@ class Game:
         self.proc_gen = ProcGen(self.keyboard)
 
         self.chunk_renderer = ChunkRenderer(self.world_surf, self.proc_gen, self.assets, self.cam)
+
+        self.weather = Weather(self.world_surf)
 
     def update_visible_surf(self): 
         scaled_res_x, scaled_res_y = round(RES[0] / self.cam.zoom_scale), round(RES[1] / self.cam.zoom_scale)
@@ -48,22 +50,24 @@ class Game:
         
     def update(self):
         self.clock.tick(FPS) 
-        self.screen.fill(self.sky_rgb)
-        self.world_surf.fill(self.sky_rgb)
+        
+        self.weather.update()
         
         self.keyboard.update()
         self.mouse.update()
         self.proc_gen.update()
         self.cam.update(pg.Vector2(self.proc_gen.x, self.proc_gen.y) * TILE_SIZE)
         self.chunk_renderer.render()
-        
+
         self.visible_surf = self.update_visible_surf()
         self.screen.blit(self.visible_surf, self.visible_surf.get_rect(topleft=(0, 0)))
+        
         self.screen.blit(
             self.default_font.render(
                 f'FPS: {self.clock.get_fps():.2f} x: {self.proc_gen.x}, y: {self.proc_gen.y} z: {self.proc_gen.z}', 
                 True, 'white'), (0, 0)
         )
+        
         pg.display.flip()
 
     def run(self):

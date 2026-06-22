@@ -23,8 +23,7 @@ class Assets:
         self.img_cache, self.folder_cache = {}, {}
 
         self.colors = {
-            'text': 'darkorchid',
-            'sky': 'lightskyblue'
+            'text': 'darkorchid'
         }
         
         self.font_sizes = {'default': 16}
