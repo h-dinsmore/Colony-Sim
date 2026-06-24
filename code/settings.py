@@ -237,3 +237,12 @@ for b in BIOMES:
 MISC_TERRAIN = {'large rock', 'small rock', 'snow'}
 
 LIQUIDS = {'water', 'lava', 'oil'}
+
+MONTHS_DAYS = {
+    'January': 31, 'February': 28, 'March': 31, 'April': 30, 'May': 31, 'June': 30, 'July': 31, 'August': 31, 
+    'September': 30, 'October': 31, 'November': 30, 'December': 31
+}
+MONTH_IDXS = {i: month for i, month in enumerate(MONTHS_DAYS)}
+
+MOON_PHASES = ('New', 'Waxing Crescent', 'First Quarter', 'Waxing Gibbous', 'Full', 'Waning Gibbous', 'Last Quarter', 'Waning Crescent')
+MOON_PHASE_IDXS = {i: phase for i, phase in enumerate(MOON_PHASES)}

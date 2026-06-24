@@ -1,11 +1,11 @@
 import pygame as pg
 
-class Player:
-    def __init__(self, pos, spr_groups):
-        super().__init__(spr_groups)
-        self.pos = pos
+from villager import Villager
 
-        self.action = 'idle'
-        self.facing_dir = 'left'
-        self.inv = None
-        
+class Player(Villager):
+    def __init__(self, image, xyz, spr_groups, screen, keyboard):
+        super().__init__(image, xyz, spr_groups, screen)
+        self.keyboard = keyboard
+
+    def move(self):
+        pass

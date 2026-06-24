@@ -29,7 +29,7 @@ class ProcGen:
         self.placed_biomes = set(biome for biome in BIOMES if self.biome_z_maps[biome] is not None)
         self.biome_in = None
         self.tile_map = self.get_tile_map()
-        self.x, self.y, self.z = 0, 0, MAP_TILE_SIZE[2] // 2
+        self.x, self.y, self.z = None, None, None # setting these after the player is spawned
 
         self.z_dif_view = False
         self.z_dif_map = None # maps the difference from the current z level to the surface at each x/y coordinate

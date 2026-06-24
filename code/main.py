@@ -8,6 +8,7 @@ from input import Keyboard, Mouse
 from proc_gen import ProcGen
 from chunk_renderer import ChunkRenderer
 from weather import Weather
+from village import Village
 
 class Game:
     def __init__(self):
@@ -37,8 +38,11 @@ class Game:
         self.proc_gen = ProcGen(self.keyboard)
 
         self.chunk_renderer = ChunkRenderer(self.world_surf, self.proc_gen, self.assets, self.cam)
-
-        self.weather = Weather(self.world_surf, self.cam)
+        
+        self.village = Village(self.proc_gen, self.assets, self.keyboard, self.world_surf)
+        self.proc_gen.x, self.proc_gen.y, self.proc_gen.z = self.village.player.xyz
+        
+        self.weather = Weather(self.world_surf, self.cam, self.proc_gen, self.village.village_sprs)
 
     def update_visible_surf(self): 
         scaled_res_x, scaled_res_y = round(RES[0] / self.cam.zoom_scale), round(RES[1] / self.cam.zoom_scale)
@@ -59,8 +63,9 @@ class Game:
         self.keyboard.update()
         self.mouse.update()
         self.proc_gen.update()
-        self.cam.update(pg.Vector2(self.proc_gen.x, self.proc_gen.y) * TILE_SIZE)
+        self.cam.update(pg.Vector2(self.village.player.rect.center))
         self.chunk_renderer.render()
+        self.village.update()
 
         self.visible_surf = self.update_visible_surf()
         self.screen.blit(self.visible_surf, self.visible_surf.get_rect(topleft=(0, 0)))

@@ -1,18 +1,43 @@
 import pygame as pg
 import numpy as np
+from random import randint
 
-from settings import RES
+from settings import RES, MONTHS_DAYS, MONTH_IDXS, MOON_PHASES, MOON_PHASE_IDXS
 from alarm import Alarm
 
 class Weather:
-    def __init__(self, world_surf, cam):
-        self.sky = Sky(world_surf, cam)
+    def __init__(self, world_surf, cam, proc_gen, village_sprs):
+        self.sky = Sky(self, world_surf, cam)
+        self.proc_gen = proc_gen
+        self.village_sprs = village_sprs
+
+        self.month_idx = randint(0, len(MONTHS_DAYS) - 1)
+        self.month = MONTH_IDXS[self.month_idx]
+        self.day = randint(0, MONTHS_DAYS[self.month])
+
+        self.moon_phase_idx = randint(0, len(MOON_PHASES) - 1)
+        self.moon_phase = MOON_PHASE_IDXS[self.moon_phase_idx]
+        
+    def update_calendar(self):
+        if self.day < MONTHS_DAYS[self.month]:
+            self.day += 1
+        else:
+            self.day = 1
+            self.month_idx = (self.month_idx + 1) % len(MONTHS_DAYS)
+            self.month = self.month_idxs[self.month_idx]
+
+        self.moon_phase_idx = (self.moon_phase_idx + 1) % len(MOON_PHASES)
+        self.moon_phase = self.moon_phase_idxs[self.moon_phase_idx]
+
+        for spr in [s for s in self.village_sprs if s.birthday == f'{self.month} {self.day}']:
+            spr.age += 1
 
     def update(self):
         self.sky.update()
 
 class Sky:
-    def __init__(self, world_surf, cam):
+    def __init__(self, weather, world_surf, cam):
+        self.weather = weather
         self.world_surf = world_surf
         self.cam = cam
 
@@ -32,14 +57,18 @@ class Sky:
         self.tint_update_dir = 1
 
         self.alarms = {
-            'update rgb': Alarm(len=20, fn=self.update_rgb, auto=True, loop=True), 
-            'update tint': Alarm(len=20, fn=self.update_tint_img, auto=False, loop=True)
+            'update rgb': Alarm(len=10_000, fn=self.update_rgb, auto=True, loop=True), 
+            'update tint': Alarm(len=10_000, fn=self.update_tint_img, auto=False, loop=True)
         }
 
     def update_rgb(self):
         np.clip(np.add(self.rgb, self.rgb_update_dir, out=self.rgb), self.min_rgb, self.max_rgb, out=self.rgb)
-        if np.array_equal(self.rgb, self.max_rgb) or np.array_equal(self.rgb, self.min_rgb):
+        midnight = np.array_equal(self.rgb, self.min_rgb)
+        if np.array_equal(self.rgb, self.max_rgb) or midnight:
             self.rgb_update_dir *= -1
+        
+        if midnight:
+            self.weather.update_calendar()
     
     def check_tint(self):
         if self.tint:
