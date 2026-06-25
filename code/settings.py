@@ -8,12 +8,9 @@ KEY_BINDINGS = {
     '+x': pg.K_d,
     '-y': pg.K_w,
     '+y': pg.K_s,
-    '+z': pg.K_UP,
-    '-z': pg.K_DOWN,
     'drop item': pg.K_BACKSPACE,
     'reset zoom': pg.K_z,
     'elevation view': pg.K_RALT
-
 }
 
 TILE_SIZE = 16

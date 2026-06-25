@@ -4,12 +4,13 @@ from math import ceil
 from settings import *
 
 class ChunkRenderer:
-    def __init__(self, world_surf, proc_gen, assets, cam):
+    def __init__(self, world_surf, proc_gen, assets, cam, player):
         self.world_surf = world_surf
         self.proc_gen = proc_gen
         self.assets = assets
         self.cam = cam 
         self.prev_cam_offset = pg.Vector2()
+        self.player = player
         
         self.chunk_tile_size = 32
         self.chunk_px_size = self.chunk_tile_size * TILE_SIZE
@@ -29,7 +30,7 @@ class ChunkRenderer:
 
     def render(self):
         new_cam_offset = self.cam.offset != self.prev_cam_offset
-        new_z_lvl = self.proc_gen.z != self.prev_z_lvl
+        new_z_lvl = self.player.z != self.prev_z_lvl
         z_dif_view_change = self.proc_gen.z_dif_view != self.z_dif_view
         if new_cam_offset or new_z_lvl or z_dif_view_change:
             self.visible_chunks = self.get_visible_chunks()
@@ -38,7 +39,7 @@ class ChunkRenderer:
                 self.prev_cam_offset = self.cam.offset.copy()
 
             if new_z_lvl:
-                self.prev_z_lvl = self.proc_gen.z
+                self.prev_z_lvl = self.player.z
 
             if z_dif_view_change:
                 self.z_dif_view = self.proc_gen.z_dif_view
@@ -56,7 +57,7 @@ class ChunkRenderer:
         start_y = max(0, min(int(offset_y) // self.chunk_px_size, self.max_chunk_px_y))
         
         return [
-            ((start_x + x) * self.chunk_px_size, (start_y + y) * self.chunk_px_size, self.proc_gen.z)
+            ((start_x + x) * self.chunk_px_size, (start_y + y) * self.chunk_px_size, self.player.z)
             for x in range(screen_chunks_x) for y in range(screen_chunks_y) 
         ]
       

@@ -8,10 +8,10 @@ class Villager(pg.sprite.Sprite):
         super().__init__(*spr_groups)
         self.image = image
         self.image.set_colorkey((0, 0, 0))
-        self.xyz = xyz
-        self.rect = self.image.get_rect(topleft=(pg.Vector2(self.xyz[:2]) * TILE_SIZE))
+        self.x, self.y, self.z = xyz
+        self.rect = self.image.get_rect(topleft=(pg.Vector2(self.x, self.y) * TILE_SIZE) + pg.Vector2(TILE_SIZE) / 2)
         self.screen = screen
-        print(self.xyz)
+        
         self.action = 'idle'
         self.facing_dir = 'left'
 

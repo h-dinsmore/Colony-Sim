@@ -12,6 +12,7 @@ class ProcGen:
         self.geo_maps = {}
         for k in WORLD_GEN_NOISE:
             self.geo_maps[k] = self.get_noise_arr(k) 
+        
         self.z_map = np.round(self.geo_maps['max z'] * (MAP_TILE_SIZE[2] - 1)).astype(np.uint8)
 
         self.biome_ids, self.id_biomes = {}, {}
@@ -29,7 +30,6 @@ class ProcGen:
         self.placed_biomes = set(biome for biome in BIOMES if self.biome_z_maps[biome] is not None)
         self.biome_in = None
         self.tile_map = self.get_tile_map()
-        self.x, self.y, self.z = None, None, None # setting these after the player is spawned
 
         self.z_dif_view = False
         self.z_dif_map = None # maps the difference from the current z level to the surface at each x/y coordinate
@@ -130,13 +130,13 @@ class ProcGen:
             if noise_range[0] > noise_min and noise_range[1] < noise_max:
                 return self.tile_ids[f'{tree} {choice((0, 1))}'] if tree in {'maple', 'fir'} else self.tile_ids[tree]
             
-    def get_z_dif_map(self):
-        if self.z in self.z_dif_cache: # TODO: add a condition checking if any tiles were changed from the cached map when mining and tree cutting is added
-            return self.z_dif_cache[self.z]
+    def get_z_dif_map(self, z):
+        if z in self.z_dif_cache: # TODO: add a condition checking if any tiles were changed from the cached map when mining and tree cutting is added
+            return self.z_dif_cache[z]
 
-        z_dif_map = self.tile_map[:, :, self.z].copy()
+        z_dif_map = self.tile_map[:, :, z].copy()
         tiles_at_dif_z = np.where(z_dif_map == self.tile_ids['air'], self.z_map, 0) 
-        z_difs = (tiles_at_dif_z - self.z).astype(np.int8)
+        z_difs = (tiles_at_dif_z - z).astype(np.int8)
         
         for (min_dif, max_dif), tile in Z_DIF_ICONS.items():
             z_dif_map[
@@ -145,34 +145,14 @@ class ProcGen:
                 & z_difs != 0
             ] = self.tile_ids[tile]
     
-        self.z_dif_cache[self.z] = z_dif_map
+        self.z_dif_cache[z] = z_dif_map
         return z_dif_map
 
-    def check_keyboard(self):
-        if self.keyboard.pressed_keys[KEY_BINDINGS['+x']]:
-            self.x = (self.x + 10) % MAP_TILE_SIZE[0]
-        if self.keyboard.pressed_keys[KEY_BINDINGS['-x']]:
-            self.x = (self.x - 10) % MAP_TILE_SIZE[0]
-
-        if self.keyboard.pressed_keys[KEY_BINDINGS['+y']]:
-            self.y = (self.y + 10) % MAP_TILE_SIZE[1]
-        if self.keyboard.pressed_keys[KEY_BINDINGS['-y']]:
-            self.y = (self.y - 10) % MAP_TILE_SIZE[1]
-
-        if self.keyboard.pressed_keys[KEY_BINDINGS['+z']]:
-            self.z = (self.z + 1) % MAP_TILE_SIZE[2]
-            if self.z_dif_view:
-                self.z_dif_map = self.get_z_dif_map()
-
-        if self.keyboard.pressed_keys[KEY_BINDINGS['-z']]:
-            self.z = (self.z - 1) % MAP_TILE_SIZE[2]  
-            if self.z_dif_view:
-                self.z_dif_map = self.get_z_dif_map()  
-
+    def check_keyboard(self, z):
         if self.keyboard.pressed_keys[KEY_BINDINGS['elevation view']]:
             self.z_dif_view = not self.z_dif_view
             if self.z_dif_view:
-                self.z_dif_map = self.get_z_dif_map()
+                self.z_dif_map = self.get_z_dif_map(z)
           
-    def update(self):
-        self.check_keyboard()
+    def update(self, z):
+        self.check_keyboard(z)

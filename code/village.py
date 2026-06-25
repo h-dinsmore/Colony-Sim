@@ -13,7 +13,7 @@ class Village:
         self.keyboard = keyboard
         self.screen = screen
         
-        self.num_pop, self.num_max_pop = 8, 128
+        self.num_pop, self.num_max_pop = 3, 128
         self.spawn_z = None
         self.spawn_map = self.get_spawn_map()
     
@@ -41,8 +41,8 @@ class Village:
     def get_spawn_map(self):
         spawn_map = np.zeros(MAP_TILE_SIZE[:2], dtype=np.uint8) # values > 0 will be the spawn tile for the nth villager added
         
-        biome_mask = (self.proc_gen.biome_map != self.proc_gen.biome_ids['forest']) & \
-                     (self.proc_gen.biome_map != self.proc_gen.biome_ids['tundra'])
+        biome_mask = (self.proc_gen.biome_map != self.proc_gen.biome_ids['desert']) & \
+                     (self.proc_gen.biome_map != self.proc_gen.biome_ids['tundra']) 
         valid_biome_tiles = np.argwhere(biome_mask) 
 
         start_y, start_x = valid_biome_tiles[randint(0, valid_biome_tiles.shape[0] - 1)]
