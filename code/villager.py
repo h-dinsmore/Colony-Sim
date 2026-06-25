@@ -4,13 +4,14 @@ from random import randint, choice
 from settings import MONTHS_DAYS, TILE_SIZE
 
 class Villager(pg.sprite.Sprite):
-    def __init__(self, image, xyz, spr_groups, screen):
+    def __init__(self, image, xyz, spr_groups, screen, proc_gen):
         super().__init__(*spr_groups)
         self.image = image
         self.image.set_colorkey((0, 0, 0))
         self.x, self.y, self.z = xyz
         self.rect = self.image.get_rect(topleft=(pg.Vector2(self.x, self.y) * TILE_SIZE) + pg.Vector2(TILE_SIZE) / 2)
         self.screen = screen
+        self.proc_gen = proc_gen
         
         self.action = 'idle'
         self.facing_dir = 'left'
@@ -22,6 +23,8 @@ class Villager(pg.sprite.Sprite):
         self.thirst = 100
         self.sleep = 100
         self.mood = 100
+        self.health = 100
+        self.living = True
 
         self.relations = {
             'family': {},

@@ -26,7 +26,8 @@ class Village:
             (int(player_y[0]), int(player_x[0]), self.spawn_z), 
             [self.player_spr, self.village_sprs],
             self.screen,
-            self.keyboard
+            self.keyboard,
+            self.proc_gen
         )
 
         for i in range(2, self.num_pop + 1): 
@@ -36,6 +37,7 @@ class Village:
                 (int(y[0]), int(x[0]), self.spawn_z),
                 [self.village_sprs],
                 self.screen,
+                self.proc_gen
             )
 
     def get_spawn_map(self):

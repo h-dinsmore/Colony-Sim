@@ -15,7 +15,6 @@ class Game:
         pg.init()
         pg.display.set_caption('colony sim')
         self.clock = pg.time.Clock()
-        self.running = True
         self.screen = pg.display.set_mode(RES)
         
         self.keyboard = Keyboard()
@@ -77,8 +76,7 @@ class Game:
         pg.display.flip()
 
     def run(self):
-        while self.running:
-            self.update_screen = False
+        while self.player.living:
             for event in pg.event.get():
                 self.running = not (event.type == pg.QUIT or (event.type == pg.KEYDOWN and event.key == pg.K_ESCAPE))
                 if event.type == pg.MOUSEWHEEL:
