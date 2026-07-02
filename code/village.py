@@ -1,6 +1,6 @@
 from player import Player
 from villager import Villager
-from settings import MAP_TILE_SIZE
+from settings import MAP_TILE_SIZE, RES
 
 import pygame as pg
 import numpy as np
@@ -24,7 +24,7 @@ class Village:
         self.player = Player(
             self.assets.get_img('../graphics/entities/villagers/player/idle.png'),
             (int(player_y[0]), int(player_x[0]), self.spawn_z), 
-            [self.player_spr, self.village_sprs],
+            [self.village_sprs, self.player_spr],
             self.screen,
             self.keyboard,
             self.proc_gen
@@ -43,14 +43,15 @@ class Village:
     def get_spawn_map(self):
         spawn_map = np.zeros(MAP_TILE_SIZE[:2], dtype=np.uint8) # values > 0 will be the spawn tile for the nth villager added
         
-        biome_mask = (self.proc_gen.biome_map != self.proc_gen.biome_ids['desert']) & \
-                     (self.proc_gen.biome_map != self.proc_gen.biome_ids['tundra']) 
+        biome_map, biome_ids = self.proc_gen.biome_map, self.proc_gen.biome_ids
+        biome_mask = (biome_map != self.proc_gen.biome_ids['desert']) & (biome_map != biome_ids['tundra'])
         valid_biome_tiles = np.argwhere(biome_mask) 
-
-        start_y, start_x = valid_biome_tiles[randint(0, valid_biome_tiles.shape[0] - 1)]
-        self.spawn_z = int(self.proc_gen.z_map[start_y, start_x]) # storing as a class attribute to keep the spawn map 2d
         
-        z_slice = np.argwhere(biome_mask & (self.proc_gen.z_map == self.spawn_z))
+        z_map = self.proc_gen.z_map
+        start_y, start_x = valid_biome_tiles[randint(0, valid_biome_tiles.shape[0] - 1)]
+        self.spawn_z = int(z_map[start_y, start_x]) # storing as a class attribute to keep the spawn map 2d
+        
+        z_slice = np.argwhere(biome_mask & (z_map == self.spawn_z))
         start_idx = np.where((z_slice[:, 0] == start_y) & (z_slice[:, 1] == start_x))[0][0]
       
         for i in range(self.num_pop):
@@ -61,4 +62,9 @@ class Village:
     
     def update(self):
         for spr in self.village_sprs:
+            if spr.visible and spr not in self.player_spr:
+                self.screen.blit(spr.image, spr.rect.center)
+                
             spr.update()
+        
+        self.screen.blit(self.player.image, self.player.rect.center)

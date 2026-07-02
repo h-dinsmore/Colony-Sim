@@ -15,6 +15,7 @@ class Villager(pg.sprite.Sprite):
         
         self.action = 'idle'
         self.facing_dir = 'left'
+        self.visible = True
 
         self.inv = {}
         self.max_inv_items = 64
@@ -41,5 +42,11 @@ class Villager(pg.sprite.Sprite):
         self.memories = {}
         self.fears = {}
 
+    def update_visibility(self, player):
+        px, py = player.rect.center
+        x, y = self.rect.center
+        z_map = self.proc_gen.z_map
+        self.visible = abs(px - x) < RES[0] // 2 and abs(py - y) < RES[1] // 2 and z_map[x, y] <= z_map[px, py]
+
     def update(self):
-        self.screen.blit(self.image, self.rect.center)
+        pass

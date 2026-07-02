@@ -16,6 +16,7 @@ class Game:
         pg.display.set_caption('colony sim')
         self.clock = pg.time.Clock()
         self.screen = pg.display.set_mode(RES)
+        self.running = True
         
         self.keyboard = Keyboard()
         
@@ -68,17 +69,16 @@ class Game:
 
         self.visible_surf = self.update_visible_surf()
         self.screen.blit(self.visible_surf, self.visible_surf.get_rect(topleft=(0, 0)))
-        self.screen.blit(
-            self.default_font.render(
-                f'FPS: {self.clock.get_fps():.2f} x: {self.player.x}, y: {self.player.y} z: {self.player.z}', 
-                True, 'white'), (0, 0)
+        self.screen.blit(self.default_font.render(
+            f'FPS:{self.clock.get_fps():.2f} x: {self.player.x}, y: {self.player.y} z: {self.player.z}, view: {self.proc_gen.view}', 
+            True, 'white'), (0, 0)
         )
         pg.display.flip()
 
     def run(self):
-        while self.player.living:
+        while self.running:
             for event in pg.event.get():
-                self.running = not (event.type == pg.QUIT or (event.type == pg.KEYDOWN and event.key == pg.K_ESCAPE))
+                self.running = self.player.living and not (event.type == pg.QUIT or (event.type == pg.KEYDOWN and event.key == pg.K_ESCAPE))
                 if event.type == pg.MOUSEWHEEL:
                     self.cam.zoom_scale = max(
                         self.cam.min_zoom_scale, 

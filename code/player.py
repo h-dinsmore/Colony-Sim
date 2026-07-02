@@ -7,6 +7,9 @@ class Player(Villager):
     def __init__(self, image, xyz, spr_groups, screen, keyboard, proc_gen):
         super().__init__(image, xyz, spr_groups, screen, proc_gen)
         self.keyboard = keyboard
+        self.player_spr, self.village_sprs = spr_groups
+
+        self.biome_in = self.proc_gen.biome_map[self.x, self.y]
 
     def move(self):
         old_x, old_y = self.x, self.y
@@ -23,16 +26,24 @@ class Player(Villager):
         
         if new_x != old_x or new_y != old_y:
             z = self.proc_gen.z_map[new_x, new_y]
+
             if self.proc_gen.tile_map[new_x, new_y, z] != self.proc_gen.tile_ids['air'] and z <= self.z + 1:
                 self.x, self.y = new_x, new_y
                 self.rect.x += dx * TILE_SIZE
                 self.rect.y += dy * TILE_SIZE
-                if z < self.z - 1:
-                    self.get_fall_damage(z)        
+                
+                if z < max(1, self.z - 1):
+                    self.get_fall_damage(z) 
+
+                if z != self.z:
+                    for spr in [s for s in self.village_sprs if s not in self.player_spr]:
+                        spr.update_visibility()
+
                 self.z = z
+                self.biome_in = self.proc_gen.biome_map[self.x, self.y]
 
     def get_fall_damage(self, z):
-        self.health -= (self.z - z) * 2
+        self.health = max(0, (self.z - z) * 2)
         if self.health <= 0:
             self.living = False
             self.kill()

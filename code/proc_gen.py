@@ -27,13 +27,10 @@ class ProcGen:
 
         self.biome_map = self.get_biome_map()
         self.biome_z_maps = {b: np.where(self.biome_map == self.biome_ids[b], self.z_map, 0) for b in BIOMES}
-        self.placed_biomes = set(biome for biome in BIOMES if self.biome_z_maps[biome] is not None)
-        self.biome_in = None
+        self.placed_biomes = set(b for b in BIOMES if self.biome_z_maps[b] is not None)
         self.tile_map = self.get_tile_map()
 
-        self.z_dif_view = False
-        self.z_dif_map = None # maps the difference from the current z level to the surface at each x/y coordinate
-        self.render_map = self.tile_map.copy()
+        self.view = 'surface'
         self.z_dif_cache = {}
 
     def get_noise_arr(self, map_name):
@@ -50,8 +47,10 @@ class ProcGen:
                     repeatx=MAP_TILE_SIZE[0],
                     repeaty=MAP_TILE_SIZE[1],
                 )
+
         if map_name == 'max z':
             arr = np.minimum(arr + (self.geo_maps['elev'] * 0.25), 1.0)
+
         return self.normalize_arr(arr)
     
     def normalize_arr(self, arr):
@@ -74,7 +73,7 @@ class ProcGen:
     
     def get_tile_map(self):
         tile_map = np.zeros(MAP_TILE_SIZE, dtype=np.uint8)
-        noise_map = np.zeros(MAP_TILE_SIZE, dtype=np.float32)
+        noise_map = np.zeros(MAP_TILE_SIZE, dtype=self.noise_arr_dtype)
         for x in range(MAP_TILE_SIZE[0]):
             for y in range(MAP_TILE_SIZE[1]): 
                 biome = self.id_biomes[self.biome_map[x, y]] 
@@ -101,17 +100,21 @@ class ProcGen:
         for biome in self.placed_biomes:
             biome_mask = self.biome_map[:, :, None] == self.biome_ids[biome]
             biome_z_map = self.biome_z_maps[biome]
+
             for z_pct, tile_data in BIOMES[biome]['z layers'].items():
                 max_z_arr = np.round(biome_z_map * z_pct).astype(np.uint8)[:, :, None]
                 z_mask = (full_z_map > min_z_arr) & (full_z_map < max_z_arr)
+                
                 for tile, (noise_min, noise_max) in tile_data.items():
                     tile_map[biome_mask & z_mask & (noise_map > noise_min) & (noise_map < noise_max)] = self.tile_ids[tile] 
+                
                 min_z_arr = max_z_arr
 
     def place_surface_terrain(self, tile_map):
         for biome in self.placed_biomes:
             biome_mask = self.biome_map == self.biome_ids[biome]
             z_map = self.biome_z_maps[biome]
+            
             for tile, (noise_min, noise_max) in BIOMES[biome]['surface terrain'].items():
                 if (tile_id := self.get_biome_tile_id(biome, tile, noise_min, noise_max)):
                     x, y = np.where((biome_mask & (self.geo_maps['veg'] > noise_min) & (self.geo_maps['veg'] < noise_max)))
@@ -130,29 +133,21 @@ class ProcGen:
             if noise_range[0] > noise_min and noise_range[1] < noise_max:
                 return self.tile_ids[f'{tree} {choice((0, 1))}'] if tree in {'maple', 'fir'} else self.tile_ids[tree]
             
-    def get_z_dif_map(self, z):
-        if z in self.z_dif_cache: # TODO: add a condition checking if any tiles were changed from the cached map when mining and tree cutting is added
-            return self.z_dif_cache[z]
-
-        z_dif_map = self.tile_map[:, :, z].copy()
-        tiles_at_dif_z = np.where(z_dif_map == self.tile_ids['air'], self.z_map, 0) 
-        z_difs = (tiles_at_dif_z - z).astype(np.int8)
-        
+    def update_z_dif_cache(self, z): # TODO: add a condition checking if any tiles were changed from the cached map when mining and tree cutting is added 
+        z_difs = (self.z_map - z).astype(np.int8)
+        x, y = np.indices(self.z_map.shape)
+        surface_tiles = self.tile_map[x, y, self.z_map].copy()
         for (min_dif, max_dif), tile in Z_DIF_ICONS.items():
-            z_dif_map[
-                ((z_difs >= min_dif) & (z_difs < max_dif) if min_dif > 0 else 
-                 (z_difs <= min_dif) & (z_difs > max_dif)) 
-                & z_difs != 0
-            ] = self.tile_ids[tile]
-    
-        self.z_dif_cache[z] = z_dif_map
-        return z_dif_map
+            mask = (z_difs >= min_dif) & (z_difs < max_dif) if min_dif > 0 else (z_difs <= min_dif) & (z_difs > max_dif)
+            mask &= z_difs != 0
+            surface_tiles[mask] = self.tile_ids[tile]
 
+        self.z_dif_cache[z] = surface_tiles
+      
     def check_keyboard(self, z):
-        if self.keyboard.pressed_keys[KEY_BINDINGS['elevation view']]:
-            self.z_dif_view = not self.z_dif_view
-            if self.z_dif_view:
-                self.z_dif_map = self.get_z_dif_map(z)
+        for view_type in ('elevation', 'surface', 'z slice'):
+            if self.keyboard.pressed_keys[KEY_BINDINGS[f'{view_type} view']]:
+                self.view = view_type
           
     def update(self, z):
         self.check_keyboard(z)

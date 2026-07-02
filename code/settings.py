@@ -9,8 +9,10 @@ KEY_BINDINGS = {
     '-y': pg.K_w,
     '+y': pg.K_s,
     'drop item': pg.K_BACKSPACE,
-    'reset zoom': pg.K_z,
-    'elevation view': pg.K_RALT
+    'reset zoom': pg.K_LCTRL,
+    'elevation view': pg.K_z,
+    'z slice view': pg.K_x,
+    'surface view': pg.K_LALT
 }
 
 TILE_SIZE = 16
@@ -233,7 +235,7 @@ for b in BIOMES:
 
 MISC_TERRAIN = {'large rock', 'small rock', 'snow'}
 
-LIQUIDS = {'water', 'lava', 'oil'}
+LIQUIDS = {'water', 'lava'}
 
 MONTHS_DAYS = {
     'January': 31, 'February': 28, 'March': 31, 'April': 30, 'May': 31, 'June': 30, 'July': 31, 'August': 31, 
