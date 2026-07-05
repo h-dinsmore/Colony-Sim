@@ -35,12 +35,12 @@ class Game:
         self.assets = Assets()
         self.default_font = self.assets.fonts['default']
         
-        self.proc_gen = ProcGen(self.keyboard)
+        self.proc_gen = ProcGen()
         
         self.village = Village(self.proc_gen, self.assets, self.keyboard, self.world_surf)
         self.player = self.village.player
         
-        self.chunk_renderer = ChunkRenderer(self.world_surf, self.proc_gen, self.assets, self.cam, self.player)
+        self.chunk_renderer = ChunkRenderer(self.world_surf, self.proc_gen, self.assets, self.cam, self.player, self.keyboard)
         
         self.weather = Weather(self.world_surf, self.cam, self.proc_gen, self.village.village_sprs)
 
@@ -62,17 +62,17 @@ class Game:
         self.weather.update()
         self.keyboard.update()
         self.mouse.update()
-        self.proc_gen.update(self.player.z)
         self.cam.update(pg.Vector2(self.player.rect.center))
-        self.chunk_renderer.render()
+        self.chunk_renderer.update() 
         self.village.update()
 
         self.visible_surf = self.update_visible_surf()
         self.screen.blit(self.visible_surf, self.visible_surf.get_rect(topleft=(0, 0)))
         self.screen.blit(self.default_font.render(
-            f'FPS:{self.clock.get_fps():.2f} x: {self.player.x}, y: {self.player.y} z: {self.player.z}, view: {self.proc_gen.view}', 
+            f'FPS:{self.clock.get_fps():.2f} x: {self.player.x}, y: {self.player.y} z: {self.player.z}, view: {self.chunk_renderer.view}, biome: {self.player.biome_in}', 
             True, 'white'), (0, 0)
         )
+        
         pg.display.flip()
 
     def run(self):

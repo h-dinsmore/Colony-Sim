@@ -1,4 +1,5 @@
 import pygame as pg
+import numpy as np
 
 from villager import Villager
 from settings import KEY_BINDINGS, MAP_TILE_SIZE, TILE_SIZE
@@ -9,7 +10,7 @@ class Player(Villager):
         self.keyboard = keyboard
         self.player_spr, self.village_sprs = spr_groups
 
-        self.biome_in = self.proc_gen.biome_map[self.x, self.y]
+        self.biome_in = self.proc_gen.id_biomes[int(self.proc_gen.biome_map[self.x, self.y])]
 
     def move(self):
         old_x, old_y = self.x, self.y
@@ -25,7 +26,7 @@ class Player(Villager):
             new_y = max(0, min(self.y + dy, MAP_TILE_SIZE[1] - 1))
         
         if new_x != old_x or new_y != old_y:
-            z = self.proc_gen.z_map[new_x, new_y]
+            z = int(self.proc_gen.z_map[new_x, new_y])
 
             if self.proc_gen.tile_map[new_x, new_y, z] != self.proc_gen.tile_ids['air'] and z <= self.z + 1:
                 self.x, self.y = new_x, new_y
@@ -39,8 +40,9 @@ class Player(Villager):
                     for spr in [s for s in self.village_sprs if s not in self.player_spr]:
                         spr.update_visibility()
 
-                self.z = z
-                self.biome_in = self.proc_gen.biome_map[self.x, self.y]
+                    self.z = z
+                    
+                self.biome_in = self.proc_gen.id_biomes[int(self.proc_gen.biome_map[self.x, self.y])]
 
     def get_fall_damage(self, z):
         self.health = max(0, (self.z - z) * 2)

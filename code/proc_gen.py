@@ -5,16 +5,12 @@ from random import choice
 from settings import *
 
 class ProcGen:
-    def __init__(self, keyboard):
-        self.keyboard = keyboard
-        
+    def __init__(self):
         self.noise_arr_dtype = np.float32
         self.geo_maps = {}
         for k in WORLD_GEN_NOISE:
             self.geo_maps[k] = self.get_noise_arr(k) 
         
-        self.z_map = np.round(self.geo_maps['max z'] * (MAP_TILE_SIZE[2] - 1)).astype(np.uint8)
-
         self.biome_ids, self.id_biomes = {}, {}
         for i, k in enumerate(BIOMES):
             self.biome_ids[k] = i
@@ -26,12 +22,13 @@ class ProcGen:
             self.id_tiles[i + 1] = k
 
         self.biome_map = self.get_biome_map()
-        self.biome_z_maps = {b: np.where(self.biome_map == self.biome_ids[b], self.z_map, 0) for b in BIOMES}
-        self.placed_biomes = set(b for b in BIOMES if self.biome_z_maps[b] is not None)
+        max_z_map = np.round(self.geo_maps['max z'] * (MAP_TILE_SIZE[2] - 1)).astype(np.uint8)
+        self.biome_max_z = {b: np.where(self.biome_map == self.biome_ids[b], max_z_map, 0) for b in BIOMES}
+        self.placed_biomes = set(b for b in BIOMES if self.biome_max_z[b] is not None)
+        
+        self.z_map = None # different from biome_max_z bc it stores the highest zs with a non-air tile
         self.tile_map = self.get_tile_map()
-
-        self.view = 'surface'
-        self.z_dif_cache = {}
+        self.z_dif_map = {}
 
     def get_noise_arr(self, map_name):
         arr = np.empty(MAP_TILE_SIZE[:2], dtype=self.noise_arr_dtype)
@@ -78,7 +75,7 @@ class ProcGen:
             for y in range(MAP_TILE_SIZE[1]): 
                 biome = self.id_biomes[self.biome_map[x, y]] 
                 noise_params = BIOMES[biome]['surface noise']
-                for z in range(self.biome_z_maps[biome][x, y]):
+                for z in range(self.biome_max_z[biome][x, y]):
                     noise_map[x, y, z] = noise.pnoise2(
                         x / noise_params['scale'],
                         y / noise_params['scale'],
@@ -91,6 +88,9 @@ class ProcGen:
 
         noise_map = self.normalize_arr(noise_map)
         self.place_solid_tiles(tile_map, noise_map)
+        self.z_map = np.max(
+            np.where(tile_map != self.tile_ids['air'], np.arange(MAP_TILE_SIZE[2]), -1), axis=2
+        ).astype(np.int8)
         self.place_surface_terrain(tile_map)
         return tile_map
     
@@ -99,11 +99,11 @@ class ProcGen:
         full_z_map = np.arange(MAP_TILE_SIZE[2]).reshape(1, 1, -1)
         for biome in self.placed_biomes:
             biome_mask = self.biome_map[:, :, None] == self.biome_ids[biome]
-            biome_z_map = self.biome_z_maps[biome]
+            max_z = self.biome_max_z[biome]
 
             for z_pct, tile_data in BIOMES[biome]['z layers'].items():
-                max_z_arr = np.round(biome_z_map * z_pct).astype(np.uint8)[:, :, None]
-                z_mask = (full_z_map > min_z_arr) & (full_z_map < max_z_arr)
+                max_z_arr = np.round(max_z * z_pct).astype(np.uint8)[:, :, None]
+                z_mask = (full_z_map >= min_z_arr) & ((full_z_map < max_z_arr) if z_pct < 1.0 else (full_z_map <= max_z_arr))
                 
                 for tile, (noise_min, noise_max) in tile_data.items():
                     tile_map[biome_mask & z_mask & (noise_map > noise_min) & (noise_map < noise_max)] = self.tile_ids[tile] 
@@ -113,12 +113,11 @@ class ProcGen:
     def place_surface_terrain(self, tile_map):
         for biome in self.placed_biomes:
             biome_mask = self.biome_map == self.biome_ids[biome]
-            z_map = self.biome_z_maps[biome]
             
             for tile, (noise_min, noise_max) in BIOMES[biome]['surface terrain'].items():
                 if (tile_id := self.get_biome_tile_id(biome, tile, noise_min, noise_max)):
-                    x, y = np.where((biome_mask & (self.geo_maps['veg'] > noise_min) & (self.geo_maps['veg'] < noise_max)))
-                    tile_map[x, y, z_map[x, y]] = tile_id
+                    x, y = np.where(biome_mask & (self.geo_maps['veg'] > noise_min) & (self.geo_maps['veg'] < noise_max))
+                    tile_map[x, y, self.z_map[x, y]] = tile_id
                 else:
                     continue # keep the surface tile
     
@@ -132,22 +131,15 @@ class ProcGen:
         for tree, noise_range in BIOMES[biome]['tree variants'].items():
             if noise_range[0] > noise_min and noise_range[1] < noise_max:
                 return self.tile_ids[f'{tree} {choice((0, 1))}'] if tree in {'maple', 'fir'} else self.tile_ids[tree]
-            
-    def update_z_dif_cache(self, z): # TODO: add a condition checking if any tiles were changed from the cached map when mining and tree cutting is added 
-        z_difs = (self.z_map - z).astype(np.int8)
-        x, y = np.indices(self.z_map.shape)
-        surface_tiles = self.tile_map[x, y, self.z_map].copy()
+
+    def update_z_dif_map(self, z): # TODO: add a condition checking if any tiles were changed from the cached map when mining and tree cutting is added 
+        z_map = np.where(self.z_map != -1, self.z_map, z)
+        z_difs = (z_map - z).astype(np.int8)
+        x, y = np.indices(z_map.shape)
+        surface_tiles = self.tile_map[x, y, z_map].copy()
         for (min_dif, max_dif), tile in Z_DIF_ICONS.items():
             mask = (z_difs >= min_dif) & (z_difs < max_dif) if min_dif > 0 else (z_difs <= min_dif) & (z_difs > max_dif)
-            mask &= z_difs != 0
+            mask &= (z_difs != 0) & (z_map != 0) # ignore tiles on the same z level or air 
             surface_tiles[mask] = self.tile_ids[tile]
 
-        self.z_dif_cache[z] = surface_tiles
-      
-    def check_keyboard(self, z):
-        for view_type in ('elevation', 'surface', 'z slice'):
-            if self.keyboard.pressed_keys[KEY_BINDINGS[f'{view_type} view']]:
-                self.view = view_type
-          
-    def update(self, z):
-        self.check_keyboard(z)
+        self.z_dif_map[z] = surface_tiles

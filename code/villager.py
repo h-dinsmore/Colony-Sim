@@ -9,7 +9,7 @@ class Villager(pg.sprite.Sprite):
         self.image = image
         self.image.set_colorkey((0, 0, 0))
         self.x, self.y, self.z = xyz
-        self.rect = self.image.get_rect(topleft=(pg.Vector2(self.x, self.y) * TILE_SIZE) + pg.Vector2(TILE_SIZE) / 2)
+        self.rect = self.image.get_rect(center=(pg.Vector2(self.x, self.y) * TILE_SIZE))
         self.screen = screen
         self.proc_gen = proc_gen
         
