@@ -89,8 +89,8 @@ class ProcGen:
         noise_map = self.normalize_arr(noise_map)
         self.place_solid_tiles(tile_map, noise_map)
         self.z_map = np.max(
-            np.where(tile_map != self.tile_ids['air'], np.arange(MAP_TILE_SIZE[2]), -1), axis=2
-        ).astype(np.int8)
+            np.where(tile_map != self.tile_ids['air'], np.arange(MAP_TILE_SIZE[2]), -1), 
+            axis=2).astype(np.int8)
         self.place_surface_terrain(tile_map)
         return tile_map
     

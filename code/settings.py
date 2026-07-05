@@ -12,12 +12,15 @@ KEY_BINDINGS = {
     'reset zoom': pg.K_LCTRL,
     'elevation view': pg.K_z,
     'z slice view': pg.K_x,
-    'surface view': pg.K_LALT
+    'surface view': pg.K_LALT,
+    'mini map view': pg.K_q
 }
 
 TILE_SIZE = 16
 MAP_TILE_SIZE = (128, 256, 16)
 MAP_PX_SIZE = (MAP_TILE_SIZE[0] * TILE_SIZE, MAP_TILE_SIZE[1] * TILE_SIZE, MAP_TILE_SIZE[2] * TILE_SIZE)
+SCREEN_TILES = RES[0] // TILE_SIZE, RES[1] // TILE_SIZE
+
 SEA_LVL = MAP_TILE_SIZE[2] // 3
 Z_DIF_ICONS = {
     (1, 3): 'foothills',
@@ -235,7 +238,7 @@ for b in BIOMES:
 
 MISC_TERRAIN = {'large rock', 'small rock', 'snow'}
 
-LIQUIDS = {'water', 'lava'}
+LIQUIDS = {'water', 'lava', 'honey'}
 
 MONTHS_DAYS = {
     'January': 31, 'February': 28, 'March': 31, 'April': 30, 'May': 31, 'June': 30, 'July': 31, 'August': 31, 

@@ -9,6 +9,7 @@ from proc_gen import ProcGen
 from chunk_renderer import ChunkRenderer
 from weather import Weather
 from village import Village
+from mini_map import MiniMap
 
 class Game:
     def __init__(self):
@@ -22,7 +23,7 @@ class Game:
         
         self.cam = Camera(pg.Vector2(RES) / 2, self.keyboard)
         self.zoom_scale = None
-        
+
         self.mouse = Mouse(self.cam.offset)
 
         self.world_surf = pg.Surface(
@@ -44,6 +45,8 @@ class Game:
         
         self.weather = Weather(self.world_surf, self.cam, self.proc_gen, self.village.village_sprs)
 
+        self.mini_map = MiniMap(self.cam, self.world_surf, self.proc_gen, self.player, self.keyboard, self.weather.sky.sky_rgb)
+
     def update_visible_surf(self): 
         scaled_res_x, scaled_res_y = round(RES[0] / self.cam.zoom_scale), round(RES[1] / self.cam.zoom_scale)
         max_x, max_y = self.world_surf.width - scaled_res_x, self.world_surf.height - scaled_res_y
@@ -63,15 +66,16 @@ class Game:
         self.keyboard.update()
         self.mouse.update()
         self.cam.update(pg.Vector2(self.player.rect.center))
-        self.chunk_renderer.update() 
+        self.chunk_renderer.update()
         self.village.update()
 
         self.visible_surf = self.update_visible_surf()
+        self.mini_map.update(self.visible_surf) # not blitting it on the world surface to keep it the same size when the camera zooms
         self.screen.blit(self.visible_surf, self.visible_surf.get_rect(topleft=(0, 0)))
-        self.screen.blit(self.default_font.render(
-            f'FPS:{self.clock.get_fps():.2f} x: {self.player.x}, y: {self.player.y} z: {self.player.z}, view: {self.chunk_renderer.view}, biome: {self.player.biome_in}', 
-            True, 'white'), (0, 0)
-        )
+
+        #self.screen.blit(self.default_font.render(
+        #    f'FPS:{self.clock.get_fps():.2f} x: {self.player.x}, y: {self.player.y} z: {self.player.z}, view: {self.chunk_renderer.view}, biome: {self.player.biome_in}', 
+        #    True, 'white'), (0, 0))
         
         pg.display.flip()
 
@@ -90,5 +94,5 @@ class Game:
         pg.quit()
         sys.exit()
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     Game().run()

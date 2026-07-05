@@ -41,7 +41,8 @@ class Sky:
         self.world_surf = world_surf
         self.cam = cam
 
-        self.rgb = np.array(pg.Color('lightskyblue')[:3], dtype=int) 
+        self.sky_rgb = pg.Color('lightskyblue')
+        self.rgb = np.array(self.sky_rgb[:3], dtype=int) 
         self.max_rgb = self.rgb.copy()
         self.min_rgb = np.array([0, 0, 64], dtype=int)
         self.rgb_update_dir = -1
