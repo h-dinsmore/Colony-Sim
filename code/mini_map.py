@@ -5,12 +5,13 @@ from random import randint, choice
 from settings import MAP_TILE_SIZE, SOLID_TILES, TILE_SIZE, RES, KEY_BINDINGS, SCREEN_TILES
 
 class MiniMap:
-    def __init__(self, cam, screen, proc_gen, player, keyboard, sky_rgb):
+    def __init__(self, cam, screen, proc_gen, player, keyboard, chunk_renderer, sky_rgb):
         self.cam = cam
         self.screen = screen
         self.proc_gen = proc_gen
         self.player = player
         self.keyboard = keyboard
+        self.chunk_renderer = chunk_renderer
 
         self.seen_tiles = np.full(MAP_TILE_SIZE, False, dtype=bool) 
         self.non_tile_rgbs = {
@@ -23,13 +24,15 @@ class MiniMap:
         self.tiles_across = 64
         self.tile_size = 4
         self.px_across = self.tiles_across * self.tile_size
-        self.update_radius = RES
+        self.update_radius = 2
         
         self.chunks_across = 4
         self.chunk_tiles_across = self.tiles_across // self.chunks_across
         self.chunk_px_size = self.chunk_tiles_across * self.tile_size
+        self.max_chunk_start_x = (MAP_TILE_SIZE[0] - 1) - self.chunk_tiles_across
+        self.max_chunk_start_y = (MAP_TILE_SIZE[1] - 1) - self.chunk_tiles_across
         self.chunk_img_cache = {}
-        self.chunk_tiles = {} 
+        self.chunk_tiles_seen = {} 
 
         self.padding = 4
         self.topleft = pg.Vector2(self.padding, self.padding)
@@ -43,77 +46,102 @@ class MiniMap:
             self.outline_rect.topleft - pg.Vector2(self.outline_w, self.outline_w), 
             self.outline_rect.size + pg.Vector2(self.outline_w * 2, self.outline_w * 2)
         )
-        self.prev_cam_offset, self.prev_z = cam.offset.copy(), player.z
+
+        self.prev_cam_offset = cam.offset.copy()
+        self.prev_view = chunk_renderer.view
         self.render = True
 
     def render_tiles(self, screen): 
         cam_x, cam_y = self.cam.offset
-        if self.check_update():
-            chunk_start_x = (int(cam_x) // self.chunk_tiles_across) * self.chunk_tiles_across
-            chunk_start_y = (int(cam_y) // self.chunk_tiles_across) * self.chunk_tiles_across
-            tile_x, tile_y = min(MAP_TILE_SIZE[0] - SCREEN_TILES[0], chunk_start_x // TILE_SIZE), min(MAP_TILE_SIZE[1] - SCREEN_TILES[1], chunk_start_x // TILE_SIZE)
+        z_slice_view = self.chunk_renderer.view == 'z slice'
+        if self.check_display_update():
+            start_px_x = (int(cam_x) // self.chunk_tiles_across) * self.chunk_tiles_across
+            start_px_y = (int(cam_y) // self.chunk_tiles_across) * self.chunk_tiles_across
 
-            for x in range(self.chunk_tiles_across):
-                for y in range(self.chunk_tiles_across):
-                    chunk_x, chunk_y = tile_x + (x * self.chunk_tiles_across), tile_y + (y * self.chunk_tiles_across)
-                    max_x = min(chunk_x + self.chunk_tiles_across, MAP_TILE_SIZE[0] - 1)
-                    max_y = min(chunk_y + self.chunk_tiles_across, MAP_TILE_SIZE[1] - 1)
+            start_tile_x = min(self.max_chunk_start_x, start_px_x // TILE_SIZE)
+            start_tile_y = min(self.max_chunk_start_y, start_px_y // TILE_SIZE)
 
-                    if (prev_seen := self.chunk_tiles.get((chunk_x, chunk_y, self.player.z))) is None:
-                        self.chunk_img_cache[(chunk_x, chunk_y, self.player.z)] = self.get_chunk_img(chunk_x, chunk_y)
-                        self.chunk_tiles[(chunk_x, chunk_y, self.player.z)] = self.seen_tiles[chunk_x:max_x, chunk_y:max_y, self.player.z]
-                    else:
-                        cur_seen = self.seen_tiles[chunk_x:max_x, chunk_y:max_y, self.player.z]
-                        if not np.array_equal(prev_seen, cur_seen):
-                            self.chunk_img_cache[(chunk_x, chunk_y, self.player.z)] = self.update_chunk_img(chunk_x, chunk_y, prev_seen, cur_seen)
-                            self.chunk_tiles[(chunk_x, chunk_y, self.player.z)] = cur_seen
+            for x in range(self.chunks_across):
+                for y in range(self.chunks_across):
+                    chunk_start_x = start_tile_x + (x * self.chunk_tiles_across)
+                    chunk_start_y = start_tile_y + (y * self.chunk_tiles_across)
+                    chunk_start_z = self.player.z if z_slice_view else self.proc_gen.z_map[(chunk_start_x, chunk_start_y)]
+
+                    chunk_end_x = chunk_start_x + self.chunk_tiles_across
+                    chunk_end_y = chunk_start_y + self.chunk_tiles_across
+
+                    x_idxs =  np.arange(chunk_start_x, chunk_end_x).astype(np.int8)[:, None]
+                    y_idxs = np.arange(chunk_start_y, chunk_end_y).astype(np.int8)[None, :]
+                    z_idxs = self.player.z if z_slice_view else self.proc_gen.z_map[chunk_start_x:chunk_end_x, chunk_start_y:chunk_end_y]
+                    cur_seen_tiles = self.seen_tiles[x_idxs, y_idxs, z_idxs]
+
+                    if (prev_seen_tiles := self.chunk_tiles_seen.get((chunk_start_x, chunk_start_y, chunk_start_z))) is None:
+                        self.chunk_img_cache[(chunk_start_x, chunk_start_y, chunk_start_z)] = self.get_chunk_img(chunk_start_x, chunk_start_y)
+                        self.chunk_tiles_seen[(chunk_start_x, chunk_start_y, chunk_start_z)] = cur_seen_tiles
                     
-                    self.img.blit(self.chunk_img_cache[(chunk_x, chunk_y, self.player.z)], (x * self.chunk_px_size, y * self.chunk_px_size))
+                    elif not np.array_equal(prev_seen_tiles, cur_seen_tiles):
+                            self.chunk_img_cache[(chunk_start_x, chunk_start_y, chunk_start_z)] = self.update_chunk_img(
+                                chunk_start_x, chunk_start_y, chunk_start_z, prev_seen_tiles, cur_seen_tiles
+                            )
+                            self.chunk_tiles_seen[(chunk_start_x, chunk_start_y, chunk_start_z)] = cur_seen_tiles
+                    
+                    self.img.blit(
+                        self.chunk_img_cache[(chunk_start_x, chunk_start_y, chunk_start_z)], 
+                        (x * self.chunk_px_size, y * self.chunk_px_size)
+                    )
 
         screen.blit(self.img, self.topleft)
 
-    def check_update(self):
+    def check_display_update(self):
+        update = False
+
         new_cam_offset = self.cam.offset != self.prev_cam_offset
-        new_z = self.player.z != self.prev_z
-        if new_cam_offset or new_z:
-            self.update_seen_tiles()
+        new_view = self.prev_view != self.chunk_renderer.view
+        tile_x, tile_y = self.player.rect.x // TILE_SIZE, self.player.rect.y // TILE_SIZE
+        new_seen_tile = self.seen_tiles[tile_x, tile_y, self.player.z] == False
+        if new_cam_offset or new_view or new_seen_tile:
+            update = True
 
             if new_cam_offset:
-                self.old_cam_offset = self.cam.offset.copy()
+                self.prev_cam_offset = self.cam.offset.copy()
 
-            if new_z:
-                self.prev_z = self.player.z
+            if new_view:
+                self.prev_view = self.chunk_renderer.view
+            
+            if new_seen_tile:
+                self.update_seen_tiles(tile_x, tile_y)
+            
+        return update
 
-            return True
-        return False
+    def update_seen_tiles(self, tile_x, tile_y):
+        min_x = max(0, tile_x - self.update_radius)
+        max_x = min(MAP_TILE_SIZE[0] - 1, tile_x + self.update_radius)
 
-    def update_seen_tiles(self):
-        offset_x, offset_y = self.cam.center_xy // TILE_SIZE # using the center instead of the topleft offset to update the tiles around the player
-        offset_x, offset_y = int(offset_x), int(offset_y) # was still a float bc center is a vector2
-        self.seen_tiles[
-            max(0, offset_x - self.update_radius[0]):min(MAP_TILE_SIZE[0], offset_x + self.update_radius[0]),
-            max(0, offset_y - self.update_radius[1]):min(MAP_TILE_SIZE[1], offset_y + self.update_radius[1]),
-            self.player.z
-        ] = True
+        min_y = max(0, tile_y - self.update_radius)
+        max_y = min(MAP_TILE_SIZE[1] - 1, tile_y + self.update_radius)
+
+        self.seen_tiles[min_x:max_x, min_y:max_y, self.proc_gen.z_map[min_x:max_x, min_y:max_y]] = True
 
     def get_chunk_img(self, chunk_x, chunk_y):
         img = pg.Surface((self.chunk_px_size, self.chunk_px_size))
         tile = pg.Surface((self.tile_size, self.tile_size))
         for x in range(min(self.chunk_tiles_across, MAP_TILE_SIZE[0] - 1 - chunk_x)):
             for y in range(min(self.chunk_tiles_across, MAP_TILE_SIZE[1] - 1 - chunk_y)):
-                tile_xyz = chunk_x + x, chunk_y + y, self.player.z
-                if self.seen_tiles[tile_xyz]:
-                    if color := self.get_tile_color(self.proc_gen.id_tiles[self.proc_gen.tile_map[tile_xyz]]):
+                tile_x, tile_y = chunk_x + x, chunk_y + y
+                tile_z = self.player.z if self.chunk_renderer.view == 'z slice' else self.proc_gen.z_map[tile_x, tile_y]
+                if self.seen_tiles[tile_x, tile_y, tile_z]:
+                    if color := self.get_tile_color(self.proc_gen.id_tiles[self.proc_gen.tile_map[tile_x, tile_y, tile_z]]):
                         tile.fill(color)
                         img.blit(tile, (x * self.tile_size, y * self.tile_size))
         return img
     
-    def update_chunk_img(self, chunk_x, chunk_y, prev_seen, cur_seen):
-        img = self.chunk_img_cache[(chunk_x, chunk_y, self.player.z)]
+    def update_chunk_img(self, chunk_x, chunk_y, chunk_z, prev_seen_tiles, cur_seen_tiles):
+        img = self.chunk_img_cache[(chunk_x, chunk_y, chunk_z)]
         tile = pg.Surface((self.tile_size, self.tile_size))
-        for col, row in np.argwhere(prev_seen != cur_seen): 
-            tile_xyz = chunk_x + col, chunk_y + row, self.player.z
-            if color := self.get_tile_color(self.proc_gen.id_tiles[self.proc_gen.tile_map[tile_xyz]]):
+        for col, row in np.argwhere(prev_seen_tiles != cur_seen_tiles): 
+            tile_x, tile_y = chunk_x + col, chunk_y + row
+            tile_z = self.player.z if self.chunk_renderer.view == 'z slice' else self.proc_gen.z_map[tile_x, tile_y]
+            if color := self.get_tile_color(self.proc_gen.id_tiles[self.proc_gen.tile_map[tile_x, tile_y, tile_z]]):
                 tile.fill(color) 
                 img.blit(tile, (col * self.tile_size, row * self.tile_size))
         return img

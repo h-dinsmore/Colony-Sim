@@ -41,11 +41,16 @@ class Game:
         self.village = Village(self.proc_gen, self.assets, self.keyboard, self.world_surf)
         self.player = self.village.player
         
-        self.chunk_renderer = ChunkRenderer(self.world_surf, self.proc_gen, self.assets, self.cam, self.player, self.keyboard)
+        self.chunk_renderer = ChunkRenderer(
+            self.world_surf, self.proc_gen, self.assets, self.cam, self.player, self.keyboard
+        )
         
         self.weather = Weather(self.world_surf, self.cam, self.proc_gen, self.village.village_sprs)
 
-        self.mini_map = MiniMap(self.cam, self.world_surf, self.proc_gen, self.player, self.keyboard, self.weather.sky.sky_rgb)
+        self.mini_map = MiniMap(
+            self.cam, self.world_surf, self.proc_gen, self.player, self.keyboard, self.chunk_renderer, 
+            self.weather.sky.sky_rgb
+        )
 
     def update_visible_surf(self): 
         scaled_res_x, scaled_res_y = round(RES[0] / self.cam.zoom_scale), round(RES[1] / self.cam.zoom_scale)
