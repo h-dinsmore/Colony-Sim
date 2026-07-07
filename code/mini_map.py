@@ -31,8 +31,9 @@ class MiniMap:
         self.chunk_px_size = self.chunk_tiles_across * self.tile_size
         self.max_chunk_start_x = (MAP_TILE_SIZE[0] - 1) - self.chunk_tiles_across
         self.max_chunk_start_y = (MAP_TILE_SIZE[1] - 1) - self.chunk_tiles_across
-        self.chunk_img_cache = {}
-        self.chunk_tiles_seen = {} 
+
+        self.chunk_img_cache = {k: {} for k in self.chunk_renderer.view_types}
+        self.chunk_tiles_seen = {k: {} for k in self.chunk_renderer.view_types} 
 
         self.padding = 4
         self.topleft = pg.Vector2(self.padding, self.padding)
@@ -49,47 +50,46 @@ class MiniMap:
 
         self.prev_cam_offset = cam.offset.copy()
         self.prev_view = chunk_renderer.view
+        self.prev_z = self.player.z
         self.render = True
 
     def render_tiles(self, screen): 
         cam_x, cam_y = self.cam.offset
         z_slice_view = self.chunk_renderer.view == 'z slice'
         if self.check_display_update():
-            start_px_x = (int(cam_x) // self.chunk_tiles_across) * self.chunk_tiles_across
-            start_px_y = (int(cam_y) // self.chunk_tiles_across) * self.chunk_tiles_across
-
-            start_tile_x = min(self.max_chunk_start_x, start_px_x // TILE_SIZE)
-            start_tile_y = min(self.max_chunk_start_y, start_px_y // TILE_SIZE)
-
+            start_tile_x = int(cam_x) // self.chunk_tiles_across
+            start_tile_y = int(cam_y) // self.chunk_tiles_across
             for x in range(self.chunks_across):
                 for y in range(self.chunks_across):
-                    chunk_start_x = start_tile_x + (x * self.chunk_tiles_across)
-                    chunk_start_y = start_tile_y + (y * self.chunk_tiles_across)
-                    chunk_start_z = self.player.z if z_slice_view else self.proc_gen.z_map[(chunk_start_x, chunk_start_y)]
+                    chunk_start_x = min(self.max_chunk_start_x, start_tile_x + (x * self.chunk_tiles_across))
+                    chunk_start_y = min(self.max_chunk_start_y, start_tile_y + (y * self.chunk_tiles_across))
+                    chunk_start_z = self.player.z if z_slice_view else int(self.proc_gen.z_map[chunk_start_x, chunk_start_y])
+                    chunk_xyz = (chunk_start_x, chunk_start_y, self.player.z)
 
                     chunk_end_x = chunk_start_x + self.chunk_tiles_across
                     chunk_end_y = chunk_start_y + self.chunk_tiles_across
 
-                    x_idxs =  np.arange(chunk_start_x, chunk_end_x).astype(np.int8)[:, None]
+                    x_idxs = np.arange(chunk_start_x, chunk_end_x).astype(np.int8)[:, None]
                     y_idxs = np.arange(chunk_start_y, chunk_end_y).astype(np.int8)[None, :]
-                    z_idxs = self.player.z if z_slice_view else self.proc_gen.z_map[chunk_start_x:chunk_end_x, chunk_start_y:chunk_end_y]
-                    cur_seen_tiles = self.seen_tiles[x_idxs, y_idxs, z_idxs]
-
-                    if (prev_seen_tiles := self.chunk_tiles_seen.get((chunk_start_x, chunk_start_y, chunk_start_z))) is None:
-                        self.chunk_img_cache[(chunk_start_x, chunk_start_y, chunk_start_z)] = self.get_chunk_img(chunk_start_x, chunk_start_y)
-                        self.chunk_tiles_seen[(chunk_start_x, chunk_start_y, chunk_start_z)] = cur_seen_tiles
+                    cur_seen_tiles = self.seen_tiles[
+                        x_idxs, y_idxs, self.player.z if z_slice_view else self.proc_gen.z_map[x_idxs, y_idxs]
+                    ]
+                    
+                    if (prev_seen_tiles := self.chunk_tiles_seen[self.chunk_renderer.view].get(chunk_xyz)) is None:
+                        self.chunk_img_cache[self.chunk_renderer.view][chunk_xyz] = self.get_chunk_img(*chunk_xyz[:2])
                     
                     elif not np.array_equal(prev_seen_tiles, cur_seen_tiles):
-                            self.chunk_img_cache[(chunk_start_x, chunk_start_y, chunk_start_z)] = self.update_chunk_img(
-                                chunk_start_x, chunk_start_y, chunk_start_z, prev_seen_tiles, cur_seen_tiles
-                            )
-                            self.chunk_tiles_seen[(chunk_start_x, chunk_start_y, chunk_start_z)] = cur_seen_tiles
+                        self.chunk_img_cache[self.chunk_renderer.view][chunk_xyz] = self.update_chunk_img(
+                            *chunk_xyz, prev_seen_tiles, cur_seen_tiles
+                        )
+
+                    self.chunk_tiles_seen[self.chunk_renderer.view][chunk_xyz] = cur_seen_tiles
                     
                     self.img.blit(
-                        self.chunk_img_cache[(chunk_start_x, chunk_start_y, chunk_start_z)], 
+                        self.chunk_img_cache[self.chunk_renderer.view][chunk_xyz], 
                         (x * self.chunk_px_size, y * self.chunk_px_size)
                     )
-
+    
         screen.blit(self.img, self.topleft)
 
     def check_display_update(self):
@@ -99,18 +99,25 @@ class MiniMap:
         new_view = self.prev_view != self.chunk_renderer.view
         tile_x, tile_y = self.player.rect.x // TILE_SIZE, self.player.rect.y // TILE_SIZE
         new_seen_tile = self.seen_tiles[tile_x, tile_y, self.player.z] == False
-        if new_cam_offset or new_view or new_seen_tile:
-            update = True
-
+        new_z = self.prev_z != self.player.z
+        if new_cam_offset or new_view or new_seen_tile or new_z:
             if new_cam_offset:
                 self.prev_cam_offset = self.cam.offset.copy()
+                update = True
 
             if new_view:
                 self.prev_view = self.chunk_renderer.view
+                update = True
             
             if new_seen_tile:
                 self.update_seen_tiles(tile_x, tile_y)
-            
+                update = True
+
+            if new_z:
+                self.prev_z = self.player.z
+                if not update:
+                    update = self.chunk_renderer.view == 'z slice'
+
         return update
 
     def update_seen_tiles(self, tile_x, tile_y):
@@ -120,7 +127,12 @@ class MiniMap:
         min_y = max(0, tile_y - self.update_radius)
         max_y = min(MAP_TILE_SIZE[1] - 1, tile_y + self.update_radius)
 
-        self.seen_tiles[min_x:max_x, min_y:max_y, self.proc_gen.z_map[min_x:max_x, min_y:max_y]] = True
+        if self.chunk_renderer.view == 'z slice':
+            z = self.player.z
+        else:
+            z = self.proc_gen.z_map[min_x:max_x, min_y:max_y] 
+
+        self.seen_tiles[min_x:max_x, min_y:max_y, z] = True
 
     def get_chunk_img(self, chunk_x, chunk_y):
         img = pg.Surface((self.chunk_px_size, self.chunk_px_size))
@@ -136,7 +148,7 @@ class MiniMap:
         return img
     
     def update_chunk_img(self, chunk_x, chunk_y, chunk_z, prev_seen_tiles, cur_seen_tiles):
-        img = self.chunk_img_cache[(chunk_x, chunk_y, chunk_z)]
+        img = self.chunk_img_cache[self.chunk_renderer.view][(chunk_x, chunk_y, chunk_z)]
         tile = pg.Surface((self.tile_size, self.tile_size))
         for col, row in np.argwhere(prev_seen_tiles != cur_seen_tiles): 
             tile_x, tile_y = chunk_x + col, chunk_y + row
