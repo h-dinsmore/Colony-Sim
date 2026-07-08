@@ -41,12 +41,13 @@ class MiniMap:
         self.outline_w = 2
         self.outline_rect = pg.Rect(
             self.topleft - pg.Vector2(self.outline_w, self.outline_w), 
-            self.img.get_size() + pg.Vector2(self.outline_w * 2, self.outline_w * 2)
+            self.img.get_size() + (pg.Vector2(self.outline_w, self.outline_w) * 2)
         )
         self.outline_rect2 = pg.Rect(
             self.outline_rect.topleft - pg.Vector2(self.outline_w, self.outline_w), 
-            self.outline_rect.size + pg.Vector2(self.outline_w * 2, self.outline_w * 2)
+            self.outline_rect.size + (pg.Vector2(self.outline_w, self.outline_w) * 2)
         )
+        self.outline_color1, self.outline_color2 = 'darkorchid', 'darkorchid4'
 
         self.prev_cam_offset = cam.offset.copy()
         self.prev_view = chunk_renderer.view
@@ -173,5 +174,5 @@ class MiniMap:
 
         if self.render:
             self.render_tiles(screen)
-            pg.draw.rect(screen, 'darkorchid', self.outline_rect, self.outline_w)
-            pg.draw.rect(screen, 'darkorchid4', self.outline_rect2, self.outline_w)
+            pg.draw.rect(screen, self.outline_color1, self.outline_rect, self.outline_w)
+            pg.draw.rect(screen, self.outline_color2, self.outline_rect2, self.outline_w)
