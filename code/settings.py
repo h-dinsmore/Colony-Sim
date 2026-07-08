@@ -13,7 +13,8 @@ KEY_BINDINGS = {
     'elevation view': pg.K_z,
     'z slice view': pg.K_x,
     'surface view': pg.K_LALT,
-    'mini map view': pg.K_q
+    'mini map view': pg.K_q,
+    'info ui view': pg.K_e
 }
 
 TILE_SIZE = 16
