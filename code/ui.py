@@ -5,7 +5,7 @@ from info_ui import InfoUI
 
 class UI:
     def __init__(self, cam, proc_gen, player, keyboard, chunk_renderer, weather, font, clock, village):
-        self.mini_map = MiniMap(cam, proc_gen, player, keyboard, chunk_renderer, weather.sky.rgb)
+        self.mini_map = MiniMap(cam, proc_gen, player, keyboard, chunk_renderer, weather.sky.sky_rgb)
 
         self.info_ui = InfoUI(self.mini_map, player, keyboard, weather, font, clock, village)
 

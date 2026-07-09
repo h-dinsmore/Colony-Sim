@@ -5,14 +5,12 @@ from random import randint, choice
 from settings import MAP_TILE_SIZE, SOLID_TILES, TILE_SIZE, RES, KEY_BINDINGS, SCREEN_TILES
 
 class MiniMap:
-    def __init__(self, cam, screen, proc_gen, player, keyboard, chunk_renderer, sky_rgb):
+    def __init__(self, cam, proc_gen, player, keyboard, chunk_renderer, sky_rgb):
         self.cam = cam
-        self.screen = screen
         self.proc_gen = proc_gen
         self.player = player
         self.keyboard = keyboard
         self.chunk_renderer = chunk_renderer
-
         self.seen_tiles = np.full(MAP_TILE_SIZE, False, dtype=bool) 
         self.non_tile_rgbs = {
             'air': sky_rgb, 
@@ -65,7 +63,7 @@ class MiniMap:
                     chunk_start_x = min(self.max_chunk_start_x, start_tile_x + (x * self.chunk_tiles_across))
                     chunk_start_y = min(self.max_chunk_start_y, start_tile_y + (y * self.chunk_tiles_across))
                     chunk_start_z = self.player.z if z_slice_view else int(self.proc_gen.z_map[chunk_start_x, chunk_start_y])
-                    chunk_xyz = (chunk_start_x, chunk_start_y, self.player.z)
+                    chunk_xyz = (chunk_start_x, chunk_start_y, chunk_start_z)
 
                     chunk_end_x = chunk_start_x + self.chunk_tiles_across
                     chunk_end_y = chunk_start_y + self.chunk_tiles_across
