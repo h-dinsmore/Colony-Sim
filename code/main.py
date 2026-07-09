@@ -26,11 +26,7 @@ class Game:
 
         self.mouse = Mouse(self.cam.offset)
 
-        self.world_surf = pg.Surface(
-            (MAP_PX_SIZE[0] / self.cam.min_zoom_scale, 
-             MAP_PX_SIZE[1] / self.cam.min_zoom_scale), 
-            pg.SRCALPHA
-        )
+        self.world_surf = pg.Surface(pg.Vector2(MAP_PX_SIZE[:2]) / self.cam.min_zoom_scale, pg.SRCALPHA)
         self.visible_surf = None
         
         self.assets = Assets()
@@ -52,13 +48,13 @@ class Game:
         )
 
     def update_visible_surf(self): 
-        scaled_res_x, scaled_res_y = round(RES[0] / self.cam.zoom_scale), round(RES[1] / self.cam.zoom_scale)
-        max_x, max_y = self.world_surf.width - scaled_res_x, self.world_surf.height - scaled_res_y
+        scaled_res = pg.Vector2(RES) / self.cam.zoom_scale
+        max_x, max_y = pg.Vector2(self.world_surf.size) - scaled_res
         cam_x, cam_y = self.cam.offset
         return pg.transform.scale(
             self.world_surf.subsurface(
                 (max(0, min(cam_x, max_x)), max(0, min(cam_y, max_y))), 
-                (scaled_res_x, scaled_res_y)
+                scaled_res
             ), 
             RES
         )
@@ -83,10 +79,7 @@ class Game:
             for event in pg.event.get():
                 self.running = self.player.living and not (event.type == pg.QUIT or (event.type == pg.KEYDOWN and event.key == pg.K_ESCAPE))
                 if event.type == pg.MOUSEWHEEL:
-                    self.cam.zoom_scale = max(
-                        self.cam.min_zoom_scale, 
-                        min(self.cam.zoom_scale + (event.y * 0.01), self.cam.max_zoom_scale)
-                    ) 
+                    self.cam.update_zoom(event)
                     
             self.update()
 
