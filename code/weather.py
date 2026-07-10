@@ -13,7 +13,7 @@ class Weather:
 
         self.month_idx = randint(0, len(MONTHS_DAYS) - 1)
         self.month = MONTH_IDXS[self.month_idx]
-        self.day = randint(0, MONTHS_DAYS[self.month])
+        self.day = randint(1, MONTHS_DAYS[self.month])
 
         self.moon_phase_idx = randint(0, len(MOON_PHASES) - 1)
         self.moon_phase = MOON_PHASE_IDXS[self.moon_phase_idx]
