@@ -1,5 +1,7 @@
 import pygame as pg
 
+from settings import TILE_SIZE
+
 class Keyboard:
     def __init__(self):
         self.held_keys = None
@@ -10,8 +12,9 @@ class Keyboard:
         self.pressed_keys = pg.key.get_just_pressed()
 
 class Mouse:
-    def __init__(self, cam_offset):
-        self.cam_offset = cam_offset
+    def __init__(self, cam):
+        self.cam = cam
+
         self.buttons_pressed = {'left': False, 'right': False}
         self.buttons_held = {'left': False, 'right': False}
     
@@ -21,7 +24,12 @@ class Mouse:
 
     @property
     def world_pos(self):
-        return self.xy_screen + self.cam_offset
+        return (self.screen_pos / self.cam.zoom_scale) + self.cam.offset
+
+    @property
+    def tile_at(self):
+        x, y = self.world_pos // TILE_SIZE
+        return (int(x), int(y))
     
     @property
     def moving(self):

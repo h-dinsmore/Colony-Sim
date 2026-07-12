@@ -54,11 +54,11 @@ class InfoUI:
         self.surf.blit(biome_surf, biome_rect)
 
         pop_surf = self.font.render(f'pop:{self.village.num_pop}', self.anti_alias, self.font_color)
-        pop_rect = pop_surf.get_rect(topleft=biome_rect.topright + pg.Vector2(15, 0))
+        pop_rect = pop_surf.get_rect(topleft=biome_rect.topright + pg.Vector2(10, 0))
         self.surf.blit(pop_surf, pop_rect)
 
         date_surf = self.font.render(f'{self.weather.month} {self.weather.day}', self.anti_alias, self.font_color)
-        date_rect = date_surf.get_rect(topleft=pop_rect.topright + pg.Vector2(15, 0))
+        date_rect = date_surf.get_rect(topleft=pop_rect.topright + pg.Vector2(10, 0))
         self.surf.blit(date_surf, date_rect)
 
         screen.blit(self.surf, self.rect)

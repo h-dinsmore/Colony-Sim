@@ -24,7 +24,7 @@ class Game:
         self.cam = Camera(pg.Vector2(RES) / 2, self.keyboard)
         self.zoom_scale = None
 
-        self.mouse = Mouse(self.cam.offset)
+        self.mouse = Mouse(self.cam)
 
         self.world_surf = pg.Surface(pg.Vector2(MAP_PX_SIZE[:2]) / self.cam.min_zoom_scale, pg.SRCALPHA)
         self.visible_surf = None
@@ -43,8 +43,8 @@ class Game:
         self.weather = Weather(self.world_surf, self.cam, self.proc_gen, self.village.village_sprs)
 
         self.ui = UI(
-            self.cam, self.proc_gen, self.player, self.keyboard, self.chunk_renderer, 
-            self.weather, self.assets.fonts['default'], self.clock, self.village
+            self.cam, self.proc_gen, self.player, self.keyboard, self.mouse, self.chunk_renderer, 
+            self.weather, self.assets, self.clock, self.village
         )
 
     def update_visible_surf(self): 
