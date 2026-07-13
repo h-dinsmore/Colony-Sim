@@ -22,10 +22,9 @@ class UI:
 
         tile_map = self.proc_gen.z_dif_map if self.chunk_renderer.view == 'elevation' else self.proc_gen.tile_map
         img = self.assets.get_img(self.chunk_renderer.get_img_path(tile_map[x, y, z])).copy()
-
         screen.blit(
             img if self.cam.zoom_scale == 1.0 else pg.transform.scale(img, pg.Vector2(TILE_SIZE, TILE_SIZE) * self.cam.zoom_scale), 
-            (pg.Vector2(x, y) * TILE_SIZE) - self.cam.offset,
+            ((pg.Vector2(x, y) * TILE_SIZE) - self.cam.offset) * self.cam.zoom_scale,
             special_flags=pg.BLEND_RGB_ADD
         )
 
