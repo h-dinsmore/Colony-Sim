@@ -24,24 +24,31 @@ class UI:
         x, y = self.mouse.tile_at
         z = self.player.z if self.chunk_renderer.view == 'z slice' else int(self.proc_gen.z_map[x, y])
 
-        tile_map = self.proc_gen.z_dif_map if self.chunk_renderer.view == 'elevation' else self.proc_gen.tile_map
-        img = self.assets.get_img(self.chunk_renderer.get_img_path(tile_map[x, y, z])).copy()
-        screen_xy = ((pg.Vector2(x, y) * TILE_SIZE) - self.cam.offset) * self.cam.zoom_scale
-        screen.blit(
-            img if self.cam.zoom_scale == 1.0 else pg.transform.scale(img, pg.Vector2(TILE_SIZE, TILE_SIZE) * self.cam.zoom_scale), 
-            screen_xy,
-            special_flags=pg.BLEND_RGB_ADD
-        )
-        self.render_reachable_tile_surf(screen, screen_xy, x, y)
+        if self.chunk_renderer.view == 'elevation':
+            if z not in self.proc_gen.z_dif_map:
+                self.proc_gen.update_z_dif_map(z)
+            tile_id = self.proc_gen.z_dif_map[z][x, y] 
+        else:
+            tile_id = self.proc_gen.tile_map[x, y, z]
 
-    def render_reachable_tile_surf(self, screen, screen_xy, tile_x, tile_y):
+        screen_xy = ((pg.Vector2(x, y) * TILE_SIZE) - self.cam.offset) * self.cam.zoom_scale
+        if img_path := self.chunk_renderer.get_img_path(tile_id):
+            img = self.assets.get_img(img_path)
+            screen.blit(
+                img if self.cam.zoom_scale == 1.0 else pg.transform.scale(img, pg.Vector2(TILE_SIZE, TILE_SIZE) * self.cam.zoom_scale), 
+                screen_xy,
+                special_flags=pg.BLEND_RGB_ADD
+            )
+        self.render_reachable_tile_surf(screen, screen_xy, x, y, img_path)
+
+    def render_reachable_tile_surf(self, screen, screen_xy, tile_x, tile_y, img_path):
         if self.old_zoom_scale != self.cam.zoom_scale:
             self.old_zoom_scale = self.cam.zoom_scale
-            self.reachable_tile_surf.size = (TILE_SIZE * self.cam.zoom_scale, TILE_SIZE * self.cam.zoom_scale)
+            self.reachable_tile_surf = pg.transform.scale(self.reachable_tile_surf, pg.Vector2(TILE_SIZE, TILE_SIZE) * self.cam.zoom_scale)
         
-        self.reachable_tile_surf.fill(
-            'green' if abs(self.player.x - tile_x) <= TILE_REACH_RADIUS and abs(self.player.y - tile_y) <= TILE_REACH_RADIUS else 'red'
-        )
+        valid = abs(self.player.x - tile_x) <= TILE_REACH_RADIUS and abs(self.player.y - tile_y) <= TILE_REACH_RADIUS and \
+            img_path is not None
+        self.reachable_tile_surf.fill('green' if valid else 'red')
         screen.blit(self.reachable_tile_surf, screen_xy)
 
     def update(self, screen):
