@@ -14,8 +14,11 @@ class Villager(pg.sprite.Sprite):
         self.proc_gen = proc_gen
         
         self.action = 'idle'
+        self.item_holding = None
         self.facing_dir = 'left'
         self.visible = True
+        self.biome_in = proc_gen.id_biomes[int(proc_gen.biome_map[self.x, self.y])]
+        self.alarms = {}
 
         self.inv = {}
         self.max_inv_items = 64
@@ -25,6 +28,7 @@ class Villager(pg.sprite.Sprite):
         self.sleep = 100
         self.mood = 100
         self.health = 100
+        self.strength = 100
         self.living = True
 
         self.relations = {
@@ -48,5 +52,12 @@ class Villager(pg.sprite.Sprite):
         z_map = self.proc_gen.z_map
         self.visible = abs(px - x) < RES[0] // 2 and abs(py - y) < RES[1] // 2 and z_map[x, y] <= z_map[px, py]
 
+    def get_tool_strength(self):
+        if self.item_holding is None:
+            return 1
+        else:
+            pass
+
     def update(self):
-        pass
+        for alarm in self.alarms.values():
+            alarm.update()

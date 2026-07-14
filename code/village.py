@@ -7,10 +7,11 @@ import numpy as np
 from random import randint
 
 class Village:
-    def __init__(self, proc_gen, assets, keyboard, screen):
+    def __init__(self, proc_gen, assets, keyboard, mouse, screen):
         self.proc_gen = proc_gen
         self.assets = assets
         self.keyboard = keyboard
+        self.mouse = mouse
         self.screen = screen
         
         self.num_pop, self.num_max_pop = 3, 128
@@ -27,6 +28,7 @@ class Village:
             [self.village_sprs, self.player_spr],
             self.screen,
             self.keyboard,
+            self.mouse,
             self.proc_gen
         )
 

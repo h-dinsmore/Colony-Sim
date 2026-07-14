@@ -32,22 +32,25 @@ class UI:
             tile_id = self.proc_gen.tile_map[x, y, z]
 
         screen_xy = ((pg.Vector2(x, y) * TILE_SIZE) - self.cam.offset) * self.cam.zoom_scale
-        if img_path := self.chunk_renderer.get_img_path(tile_id):
-            img = self.assets.get_img(img_path)
+        if not (air_tile := tile_id == self.proc_gen.tile_ids['air']):
+            img = self.assets.get_img(self.chunk_renderer.get_img_path(tile_id))
             screen.blit(
                 img if self.cam.zoom_scale == 1.0 else pg.transform.scale(img, pg.Vector2(TILE_SIZE, TILE_SIZE) * self.cam.zoom_scale), 
                 screen_xy,
                 special_flags=pg.BLEND_RGB_ADD
             )
-        self.render_reachable_tile_surf(screen, screen_xy, x, y, img_path)
+        self.render_reachable_tile_surf(screen, screen_xy, x, y, air_tile)
 
-    def render_reachable_tile_surf(self, screen, screen_xy, tile_x, tile_y, img_path):
+    def render_reachable_tile_surf(self, screen, screen_xy, x, y, air_tile):
         if self.old_zoom_scale != self.cam.zoom_scale:
             self.old_zoom_scale = self.cam.zoom_scale
             self.reachable_tile_surf = pg.transform.scale(self.reachable_tile_surf, pg.Vector2(TILE_SIZE, TILE_SIZE) * self.cam.zoom_scale)
         
-        valid = abs(self.player.x - tile_x) <= TILE_REACH_RADIUS and abs(self.player.y - tile_y) <= TILE_REACH_RADIUS and \
-            img_path is not None
+        valid = abs(self.player.x - x) <= TILE_REACH_RADIUS and abs(self.player.y - y) <= TILE_REACH_RADIUS and \
+            not air_tile
+        if self.chunk_renderer.view != 'z slice': 
+            valid &= abs(self.player.z - self.proc_gen.z_map[x, y]) <= 1
+    
         self.reachable_tile_surf.fill('green' if valid else 'red')
         screen.blit(self.reachable_tile_surf, screen_xy)
 

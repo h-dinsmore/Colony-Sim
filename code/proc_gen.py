@@ -15,9 +15,13 @@ class ProcGen:
         for i, k in enumerate(BIOMES):
             self.biome_ids[k] = i
             self.id_biomes[i] = k
-            
-        self.tile_ids, self.id_tiles = {'air': 0}, {0: 'air'}
-        for i, k in enumerate(SOLID_TILES.keys() | ELEVATIONS | TREES | LIQUIDS | SURFACE_TERRAIN):
+        
+        self.tile_ids, self.id_tiles = {}, {}
+        # storing these first to use the ids to look up hardness values using the tile_hardness_map indices
+        for i, k in enumerate(('air', *SOLID_TILES.keys())):
+            self.tile_ids[k], self.id_tiles[i] = i, k 
+        
+        for i, k in enumerate(ELEVATIONS | TREES | LIQUIDS | SURFACE_TERRAIN, start=len(self.tile_ids) + 1):
             self.tile_ids[k] = i + 1
             self.id_tiles[i + 1] = k
 
@@ -27,9 +31,13 @@ class ProcGen:
         self.placed_biomes = set(b for b in BIOMES if self.biome_max_z[b] is not None)
         
         self.z_map = None # different from biome_max_z bc it stores the highest zs with a non-air tile
-        self.tile_map = self.get_tile_map()
         self.z_dif_map = {}
 
+        self.solid_tile_map = None # just storing to ignore the surface tile ids in tile_map when indexing tile_hardess_by_id
+        self.tile_map = self.get_tile_map()
+        tile_hardness_by_id = np.array([0] + [SOLID_TILES[tile]['hardness'] for tile in SOLID_TILES], dtype=np.uint16) # the index of each element matches the id of the tile it represents
+        self.tile_hardness_map = tile_hardness_by_id[self.solid_tile_map]
+       
     def get_noise_arr(self, map_name):
         arr = np.empty(MAP_TILE_SIZE[:2], dtype=self.noise_arr_dtype)
         noise_params = WORLD_GEN_NOISE[map_name]
@@ -85,12 +93,15 @@ class ProcGen:
                         repeatx=MAP_TILE_SIZE[0],
                         repeaty=MAP_TILE_SIZE[1],
                     )
-
         noise_map = self.normalize_arr(noise_map)
+
         self.place_solid_tiles(tile_map, noise_map)
+        self.solid_tile_map = tile_map.copy()
+
         self.z_map = np.max(
-            np.where(tile_map != self.tile_ids['air'], np.arange(MAP_TILE_SIZE[2]), -1), 
-            axis=2).astype(np.int8)
+            np.where(tile_map != self.tile_ids['air'], np.arange(MAP_TILE_SIZE[2]), -1), axis=2
+        ).astype(np.int8)
+
         self.place_surface_terrain(tile_map)
         return tile_map
     
@@ -98,11 +109,11 @@ class ProcGen:
         min_z_arr = np.zeros(MAP_TILE_SIZE, dtype=np.uint8)
         full_z_map = np.arange(MAP_TILE_SIZE[2]).reshape(1, 1, -1)
         for biome in self.placed_biomes:
-            biome_mask = self.biome_map[:, :, None] == self.biome_ids[biome]
+            biome_mask = self.biome_map[:, :, np.newaxis] == self.biome_ids[biome]
             max_z = self.biome_max_z[biome]
 
             for z_pct, tile_data in BIOMES[biome]['z layers'].items():
-                max_z_arr = np.round(max_z * z_pct).astype(np.uint8)[:, :, None]
+                max_z_arr = np.round(max_z * z_pct).astype(np.uint8)[:, :, np.newaxis]
                 z_mask = (full_z_map >= min_z_arr) & ((full_z_map < max_z_arr) if z_pct < 1.0 else (full_z_map <= max_z_arr))
                 
                 for tile, (noise_min, noise_max) in tile_data.items():

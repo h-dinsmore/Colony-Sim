@@ -33,7 +33,7 @@ class Game:
         
         self.proc_gen = ProcGen()
         
-        self.village = Village(self.proc_gen, self.assets, self.keyboard, self.world_surf)
+        self.village = Village(self.proc_gen, self.assets, self.keyboard, self.mouse, self.world_surf)
         self.player = self.village.player
         
         self.chunk_renderer = ChunkRenderer(
@@ -52,11 +52,7 @@ class Game:
         max_x, max_y = pg.Vector2(self.world_surf.size) - scaled_res
         cam_x, cam_y = self.cam.offset
         return pg.transform.scale(
-            self.world_surf.subsurface(
-                (max(0, min(cam_x, max_x)), max(0, min(cam_y, max_y))), 
-                scaled_res
-            ), 
-            RES
+            self.world_surf.subsurface((max(0, min(cam_x, max_x)), max(0, min(cam_y, max_y))), scaled_res), RES
         )
        
     def update(self):
