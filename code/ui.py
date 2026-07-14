@@ -2,7 +2,7 @@ import pygame as pg
 
 from mini_map import MiniMap
 from info_ui import InfoUI
-from settings import TILE_SIZE, MAP_TILE_SIZE
+from settings import TILE_SIZE, MAP_TILE_SIZE, TILE_REACH_RADIUS
 
 class UI:
     def __init__(self, cam, proc_gen, player, keyboard, mouse, chunk_renderer, weather, assets, clock, village):
@@ -10,23 +10,39 @@ class UI:
         self.assets = assets
         self.chunk_renderer = chunk_renderer
         self.proc_gen = proc_gen
-        self.cam = cam
+        self.cam, self.old_zoom_scale = cam, cam.zoom_scale
+        self.player = player
 
         self.mini_map = MiniMap(cam, proc_gen, player, keyboard, chunk_renderer, weather.sky.sky_rgb)
 
         self.info_ui = InfoUI(self.mini_map, player, keyboard, weather, assets.fonts['default'], clock, village)
 
+        self.reachable_tile_surf = pg.Surface((TILE_SIZE, TILE_SIZE))
+        self.reachable_tile_surf.set_alpha(64)
+       
     def highlight_tile_at_mouse(self, screen):
         x, y = self.mouse.tile_at
         z = self.player.z if self.chunk_renderer.view == 'z slice' else int(self.proc_gen.z_map[x, y])
 
         tile_map = self.proc_gen.z_dif_map if self.chunk_renderer.view == 'elevation' else self.proc_gen.tile_map
         img = self.assets.get_img(self.chunk_renderer.get_img_path(tile_map[x, y, z])).copy()
+        screen_xy = ((pg.Vector2(x, y) * TILE_SIZE) - self.cam.offset) * self.cam.zoom_scale
         screen.blit(
             img if self.cam.zoom_scale == 1.0 else pg.transform.scale(img, pg.Vector2(TILE_SIZE, TILE_SIZE) * self.cam.zoom_scale), 
-            ((pg.Vector2(x, y) * TILE_SIZE) - self.cam.offset) * self.cam.zoom_scale,
+            screen_xy,
             special_flags=pg.BLEND_RGB_ADD
         )
+        self.render_reachable_tile_surf(screen, screen_xy, x, y)
+
+    def render_reachable_tile_surf(self, screen, screen_xy, tile_x, tile_y):
+        if self.old_zoom_scale != self.cam.zoom_scale:
+            self.old_zoom_scale = self.cam.zoom_scale
+            self.reachable_tile_surf.size = (TILE_SIZE * self.cam.zoom_scale, TILE_SIZE * self.cam.zoom_scale)
+        
+        self.reachable_tile_surf.fill(
+            'green' if abs(self.player.x - tile_x) <= TILE_REACH_RADIUS and abs(self.player.y - tile_y) <= TILE_REACH_RADIUS else 'red'
+        )
+        screen.blit(self.reachable_tile_surf, screen_xy)
 
     def update(self, screen):
         self.mini_map.update(screen)

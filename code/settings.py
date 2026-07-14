@@ -250,3 +250,4 @@ MONTH_IDXS = {i: month for i, month in enumerate(MONTHS_DAYS)}
 MOON_PHASES = ('New', 'Waxing Crescent', 'First Quarter', 'Waxing Gibbous', 'Full', 'Waning Gibbous', 'Last Quarter', 'Waning Crescent')
 MOON_PHASE_IDXS = {i: phase for i, phase in enumerate(MOON_PHASES)}
 
+TILE_REACH_RADIUS = 4
