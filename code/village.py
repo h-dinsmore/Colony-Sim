@@ -7,7 +7,7 @@ import numpy as np
 from random import randint
 
 class Village:
-    def __init__(self, proc_gen, assets, keyboard, mouse, screen):
+    def __init__(self, proc_gen, assets, keyboard, mouse, screen, chunk_renderer):
         self.proc_gen = proc_gen
         self.assets = assets
         self.keyboard = keyboard
@@ -26,10 +26,11 @@ class Village:
             self.assets.get_img('../graphics/entities/villagers/player/idle.png'),
             (int(player_y[0]), int(player_x[0]), self.spawn_z), 
             [self.village_sprs, self.player_spr],
-            self.screen,
-            self.keyboard,
-            self.mouse,
-            self.proc_gen
+            screen,
+            keyboard,
+            mouse,
+            proc_gen,
+            chunk_renderer
         )
 
         for i in range(2, self.num_pop + 1): 
@@ -38,8 +39,9 @@ class Village:
                 self.assets.get_img('../graphics/entities/villagers/idle.png'),
                 (int(y[0]), int(x[0]), self.spawn_z),
                 [self.village_sprs],
-                self.screen,
-                self.proc_gen
+                screen,
+                proc_gen,
+                chunk_renderer
             )
 
     def get_spawn_map(self):

@@ -2,11 +2,11 @@ import pygame as pg
 import numpy as np
 
 from villager import Villager
-from settings import KEY_BINDINGS, MAP_TILE_SIZE, TILE_SIZE, SOLID_TILES, SURFACE_TERRAIN, FPS
+from settings import KEY_BINDINGS, MAP_TILE_SIZE, TILE_SIZE, SOLID_TILES, SURFACE_TERRAIN, FPS, Z_DIF_ICONS
 
 class Player(Villager):
-    def __init__(self, image, xyz, spr_groups, screen, keyboard, mouse, proc_gen):
-        super().__init__(image, xyz, spr_groups, screen, proc_gen)
+    def __init__(self, image, xyz, spr_groups, screen, keyboard, mouse, proc_gen, chunk_renderer):
+        super().__init__(image, xyz, spr_groups, screen, proc_gen, chunk_renderer)
         self.keyboard = keyboard
         self.mouse = mouse
         self.player_spr, self.village_sprs = spr_groups
@@ -27,7 +27,7 @@ class Player(Villager):
         if new_x != old_x or new_y != old_y:
             z = int(self.proc_gen.z_map[new_x, new_y])
 
-            if self.proc_gen.tile_map[new_x, new_y, z] != self.proc_gen.tile_ids['air'] and z <= self.z + 1:
+            if self.proc_gen.tile_map[new_x, new_y, z] != self.proc_gen.tile_ids['air'] and z <= self.z + 2:
                 self.x, self.y = new_x, new_y
                 self.rect.x += dx * TILE_SIZE
                 self.rect.y += dy * TILE_SIZE
@@ -52,18 +52,25 @@ class Player(Villager):
     def check_removing_tile(self):
         if pg.mouse.get_pressed()[0]:
             x, y = self.mouse.tile_at
-            z = self.proc_gen.z_map[x, y]
+            z = int(self.proc_gen.z_map[x, y])
             if (tile_name := self.proc_gen.id_tiles[self.proc_gen.tile_map[x, y, z]]) in SOLID_TILES.keys() | SURFACE_TERRAIN:
-                self.mine_tile((x, y, z))
+                self.mine_tile(x, y, z)
             else:
                 pass # chopping trees, gathering plants,
     
-    def mine_tile(self, xyz):
+    def mine_tile(self, x, y, z):
         self.action = 'mining'
-        hardness = max(0, self.proc_gen.tile_hardness_map[xyz] - ((self.strength * self.get_tool_strength()) / FPS))
-        self.proc_gen.tile_hardness_map[xyz] = hardness
+        hardness = max(0, self.proc_gen.tile_hardness_map[x, y, z] - ((self.strength * self.get_tool_strength()) / FPS))
+        self.proc_gen.tile_hardness_map[x, y, z] = hardness
         if hardness == 0:
-            self.proc_gen.tile_map[xyz] = self.proc_gen.tile_ids['air']
+            self.proc_gen.tile_map[x, y, z] = self.proc_gen.tile_ids['air']
+            self.proc_gen.z_map[x, y] = max(0, self.proc_gen.z_map[x, y] - 1)
+            if z not in self.proc_gen.z_dif_map:
+                self.proc_gen.update_z_dif_map(z)
+            else:
+                self.proc_gen.z_dif_map[z][x, y] = self.proc_gen.tile_ids['shallow valley']
+
+            self.chunk_renderer.update_tile_in_chunk(x, y, z)
 
     def update(self):
         super().update()

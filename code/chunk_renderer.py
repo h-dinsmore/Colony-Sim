@@ -4,14 +4,14 @@ from math import ceil
 from settings import *
 
 class ChunkRenderer:
-    def __init__(self, world_surf, proc_gen, assets, cam, player, keyboard):
+    def __init__(self, world_surf, proc_gen, assets, cam, keyboard):
         self.world_surf = world_surf
         self.proc_gen = proc_gen
         self.assets = assets
         self.cam, self.prev_cam_offset = cam, pg.Vector2()
-        self.player = player
         self.keyboard = keyboard
-        
+        self.player = None # not initialized yet
+
         self.chunk_tile_size = 32
         self.chunk_px_size = self.chunk_tile_size * TILE_SIZE
         self.visible_chunks = []
@@ -19,7 +19,7 @@ class ChunkRenderer:
 
         self.view_types = ('elevation', 'surface', 'z slice')
         self.view = 'surface'
-        self.prev_z, self.prev_view = player.z, self.view
+        self.prev_z, self.prev_view = None, None
         self.img_cache = {k: {} for k in self.view_types}
         self.img_path_cache = {}
         
@@ -58,7 +58,7 @@ class ChunkRenderer:
         start_y = max(0, min(int(cam_y), self.max_chunk_xy[1]))
         return [
             ((start_x + x) * self.chunk_px_size, (start_y + y) * self.chunk_px_size, 
-            self.player.z if self.view != 'surface' else int(self.proc_gen.z_map[start_x + x, start_y + y]))
+            int(self.proc_gen.z_map[start_x + x, start_y + y])) # keep the surface z even for the z view so update_tile_in_chunk() can calculate the key's z in case the player's z doesn't match the tile's
             for x in range((ceil(RES[0] / self.cam.zoom_scale) // self.chunk_px_size) + 2) 
             for y in range((ceil(RES[1] / self.cam.zoom_scale) // self.chunk_px_size) + 2) 
         ]
@@ -80,6 +80,36 @@ class ChunkRenderer:
         
         self.img_cache[self.view][(chunk_x, chunk_y, chunk_z)] = img
         return img
+
+    def update_tile_in_chunk(self, tile_x, tile_y, z):
+        chunk_px_x = ((tile_x * TILE_SIZE) // self.chunk_px_size) * self.chunk_px_size
+        chunk_px_y = ((tile_y * TILE_SIZE) // self.chunk_px_size) * self.chunk_px_size
+        chunk_z = int(self.proc_gen.z_map[chunk_px_x // self.chunk_px_size, chunk_px_y // self.chunk_px_size])
+        chunk_xyz = (chunk_px_x, chunk_px_y, chunk_z)
+
+        screen_tile_size = TILE_SIZE * self.cam.zoom_scale
+        tile_xy_in_chunk =  (pg.Vector2(tile_x, tile_y) * TILE_SIZE) - pg.Vector2(chunk_px_x, chunk_px_y)
+        
+        for view in [v for v in self.view_types if chunk_xyz in self.img_cache[v]]:
+            match view:
+                case 'z slice':
+                    tile_img = pg.Surface((screen_tile_size, screen_tile_size), pg.SRCALPHA)
+                    tile_img.fill(self.assets.colors['transparent'])
+
+                case 'surface':
+                    if z == 0:
+                        tile_img = pg.Surface((screen_tile_size, screen_tile_size), pg.SRCALPHA)
+                        tile_img.fill(self.assets.colors['transparent'])
+                    else:
+                        tile_img = self.assets.get_img(self.get_img_path(self.proc_gen.tile_map[tile_x, tile_y, z - 1]))
+
+                case 'elevation':
+                    tile_img = self.assets.get_img(self.get_img_path(self.proc_gen.z_dif_map[z][tile_x, tile_y]))
+
+            if (hardness := self.proc_gen.tile_hardness_map[tile_x, tile_y, z]) != 0:
+                tile_img.set_alpha(255 * (hardness / SOLID_TILES[self.proc_gen.id_tiles[new_tile_id]]['hardness']))
+            
+            self.img_cache[view][chunk_xyz].blit(tile_img, tile_xy_in_chunk)
 
     def get_tile_id(self, x, y):
         tile_id = None

@@ -4,7 +4,7 @@ from random import randint, choice
 from settings import MONTHS_DAYS, TILE_SIZE
 
 class Villager(pg.sprite.Sprite):
-    def __init__(self, image, xyz, spr_groups, screen, proc_gen):
+    def __init__(self, image, xyz, spr_groups, screen, proc_gen, chunk_renderer):
         super().__init__(*spr_groups)
         self.image = image
         self.image.set_colorkey((0, 0, 0))
@@ -12,6 +12,7 @@ class Villager(pg.sprite.Sprite):
         self.rect = self.image.get_rect(center=(pg.Vector2(self.x, self.y) * TILE_SIZE))
         self.screen = screen
         self.proc_gen = proc_gen
+        self.chunk_renderer = chunk_renderer
         
         self.action = 'idle'
         self.item_holding = None

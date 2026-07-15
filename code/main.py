@@ -33,17 +33,17 @@ class Game:
         
         self.proc_gen = ProcGen()
         
-        self.village = Village(self.proc_gen, self.assets, self.keyboard, self.mouse, self.world_surf)
-        self.player = self.village.player
+        self.chunk_renderer = ChunkRenderer(self.world_surf, self.proc_gen, self.assets, self.cam, self.keyboard)
         
-        self.chunk_renderer = ChunkRenderer(
-            self.world_surf, self.proc_gen, self.assets, self.cam, self.player, self.keyboard
+        self.village = Village(
+            self.proc_gen, self.assets, self.keyboard, self.mouse, self.world_surf, self.chunk_renderer
         )
+        self.chunk_renderer.player = self.village.player
         
         self.weather = Weather(self.world_surf, self.cam, self.proc_gen, self.village.village_sprs)
 
         self.ui = UI(
-            self.cam, self.proc_gen, self.player, self.keyboard, self.mouse, self.chunk_renderer, 
+            self.cam, self.proc_gen, self.village.player, self.keyboard, self.mouse, self.chunk_renderer, 
             self.weather, self.assets, self.clock, self.village
         )
 
@@ -61,7 +61,7 @@ class Game:
         self.weather.update()
         self.keyboard.update()
         self.mouse.update()
-        self.cam.update(pg.Vector2(self.player.rect.center))
+        self.cam.update(pg.Vector2(self.village.player.rect.center))
         self.chunk_renderer.update()
         self.village.update()
 
@@ -73,7 +73,7 @@ class Game:
     def run(self):
         while self.running:
             for event in pg.event.get():
-                self.running = self.player.living and not (event.type == pg.QUIT or (event.type == pg.KEYDOWN and event.key == pg.K_ESCAPE))
+                self.running = self.village.player.living and not (event.type == pg.QUIT or (event.type == pg.KEYDOWN and event.key == pg.K_ESCAPE))
                 if event.type == pg.MOUSEWHEEL:
                     self.cam.update_zoom(event)
                     
