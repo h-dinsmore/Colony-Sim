@@ -29,9 +29,9 @@ class Game:
         self.world_surf = pg.Surface(pg.Vector2(MAP_PX_SIZE[:2]) / self.cam.min_zoom_scale, pg.SRCALPHA)
         self.visible_surf = None
         
-        self.assets = Assets()
-        
         self.proc_gen = ProcGen()
+        
+        self.assets = Assets(self.proc_gen)
         
         self.chunk_renderer = ChunkRenderer(self.world_surf, self.proc_gen, self.assets, self.cam, self.keyboard)
         

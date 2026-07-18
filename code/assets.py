@@ -13,7 +13,9 @@ class FolderDir:
     loaded: bool = False
 
 class Assets:
-    def __init__(self):
+    def __init__(self, proc_gen):
+        self.proc_gen = proc_gen
+        
         self.graphics_load_runtime = {'entities', 'terrain'} 
         self.graphics_dir_root = Path('..') / 'graphics'
         self.graphics = {
@@ -77,14 +79,6 @@ class Assets:
             current_folder.loaded = True
             self.folder_cache[dir_path] = files
         return current_folder
-    
-    def get_img(self, dir_path):
-        if dir_path in self.img_cache:
-            return self.img_cache[dir_path]
-        
-        img = self.load_img(dir_path)
-        self.img_cache[dir_path] = img
-        return img
     
     def load_fonts(self, dir_path):
         fonts = {}

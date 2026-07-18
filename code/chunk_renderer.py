@@ -21,15 +21,6 @@ class ChunkRenderer:
         self.view = 'surface'
         self.prev_z, self.prev_view = None, None
         self.img_cache = {k: {} for k in self.view_types}
-        self.img_path_cache = {}
-        
-        self.terrain_types = {
-            'solid tiles': SOLID_TILES.keys(), 
-            'surface terrain': SURFACE_TERRAIN,
-            'elevations': ELEVATIONS, 
-            'trees': TREES, 
-            'liquids': LIQUIDS
-        }
 
     def render(self):
         new_cam_offset = self.cam.offset != self.prev_cam_offset
@@ -71,48 +62,60 @@ class ChunkRenderer:
 
         if self.view == 'elevation' and self.player.z not in self.proc_gen.z_dif_map:
             self.proc_gen.update_z_dif_map(self.player.z)
-        
+
+        img_folder = self.assets.graphics['terrain'].files
         tile_x, tile_y = chunk_x // TILE_SIZE, chunk_y // TILE_SIZE
         for x in range(img.width // TILE_SIZE):
             for y in range(img.height // TILE_SIZE):
-                if tile_id := self.get_tile_id(tile_x + x, tile_y + y):
-                    img.blit(self.assets.get_img(self.get_img_path(tile_id)), (x * TILE_SIZE, y * TILE_SIZE))
+                if (tile_id := self.get_tile_id(tile_x + x, tile_y + y)) != self.proc_gen.tile_ids['air']:
+                    img.blit(img_folder[self.proc_gen.id_tiles[tile_id]], (x * TILE_SIZE, y * TILE_SIZE))
         
         self.img_cache[self.view][(chunk_x, chunk_y, chunk_z)] = img
         return img
 
-    def update_tile_in_chunk(self, tile_x, tile_y, z):
+    def update_tile_in_chunk(self, tile_x, tile_y, z, hardness):
         chunk_px_x = ((tile_x * TILE_SIZE) // self.chunk_px_size) * self.chunk_px_size
         chunk_px_y = ((tile_y * TILE_SIZE) // self.chunk_px_size) * self.chunk_px_size
         chunk_z = int(self.proc_gen.z_map[chunk_px_x // self.chunk_px_size, chunk_px_y // self.chunk_px_size])
-        chunk_xyz = (chunk_px_x, chunk_px_y, chunk_z)
 
-        screen_tile_size = TILE_SIZE * self.cam.zoom_scale
-        tile_xy_in_chunk =  (pg.Vector2(tile_x, tile_y) * TILE_SIZE) - pg.Vector2(chunk_px_x, chunk_px_y)
+        match self.view:
+            case 'surface': z_idx = self.proc_gen.z_map[tile_x, tile_y]
+            case 'z slice': z_idx = self.player.z
+            case 'elevation': z_idx = self.proc_gen.z_dif_map[self.player.z][tile_x, tile_y]
+        tile_name = self.proc_gen.id_tiles[self.proc_gen.tile_map[tile_x, tile_y, z_idx]]
         
-        for view in [v for v in self.view_types if chunk_xyz in self.img_cache[v]]:
-            match view:
-                case 'z slice':
+        screen_tile_size = TILE_SIZE * self.cam.zoom_scale
+        tile_xy_in_chunk = (pg.Vector2(tile_x, tile_y) * TILE_SIZE) - pg.Vector2(chunk_px_x, chunk_px_y)
+        solid_tile = hardness > 0 and tile_name in SOLID_TILES
+        for view in [v for v in self.view_types if (chunk_px_x, chunk_px_y, chunk_z) in self.img_cache[v]]:
+            self.img_cache[view][(chunk_px_x, chunk_px_y, chunk_z)].blit(
+                self.get_tile_img(view, screen_tile_size, tile_name, z, hardness, solid_tile), 
+                tile_xy_in_chunk
+            )
+
+    def get_tile_img(self, view, screen_tile_size, tile_name, z, hardness, solid_tile):
+        match view:
+            case 'z slice':
+                tile_img = pg.Surface((screen_tile_size, screen_tile_size), pg.SRCALPHA)
+                tile_img.fill(self.assets.colors['transparent'])
+
+            case 'surface':
+                if z == 0:
                     tile_img = pg.Surface((screen_tile_size, screen_tile_size), pg.SRCALPHA)
                     tile_img.fill(self.assets.colors['transparent'])
+                else:
+                    tile_img = self.assets.graphics['terrain'].files[tile_name]
+                    if solid_tile: # if hardness is 0 then the map was updated before this function was called and the tile below it will show
+                        tile_img.set_alpha(int(255 * (hardness / SOLID_TILES[tile_name]['hardness'])))
 
-                case 'surface':
-                    if z == 0:
-                        tile_img = pg.Surface((screen_tile_size, screen_tile_size), pg.SRCALPHA)
-                        tile_img.fill(self.assets.colors['transparent'])
-                    else:
-                        tile_img = self.assets.get_img(self.get_img_path(self.proc_gen.tile_map[tile_x, tile_y, z - 1]))
-
-                case 'elevation':
-                    tile_img = self.assets.get_img(self.get_img_path(self.proc_gen.z_dif_map[z][tile_x, tile_y]))
-
-            if (hardness := self.proc_gen.tile_hardness_map[tile_x, tile_y, z]) != 0:
-                tile_img.set_alpha(255 * (hardness / SOLID_TILES[self.proc_gen.id_tiles[new_tile_id]]['hardness']))
-            
-            self.img_cache[view][chunk_xyz].blit(tile_img, tile_xy_in_chunk)
+            case 'elevation':
+                tile_img = self.assets.graphics['terrain'].files[tile_name]
+                if solid_tile:
+                    tile_img.set_alpha(int(255 * (hardness / SOLID_TILES[tile_name]['hardness'])))
+        return tile_img
 
     def get_tile_id(self, x, y):
-        tile_id = None
+        tile_id = self.proc_gen.tile_ids['air']
         if self.view == 'z slice':
             tile_id = self.proc_gen.tile_map[x, y, self.player.z]
         else:
@@ -122,20 +125,7 @@ class ChunkRenderer:
             else:
                 tile_id = self.proc_gen.z_dif_map[self.player.z][x, y]
         
-        if tile_id != self.proc_gen.tile_ids['air']:
-            return tile_id
-        return None
-    
-    def get_img_path(self, tile_id):
-        if (img_name := self.proc_gen.id_tiles[tile_id]) in self.img_path_cache:
-            return self.img_path_cache[img_name]
-
-        path = '../graphics/terrain/'
-        for k in self.terrain_types:
-            if img_name in self.terrain_types[k]:
-                full_path = path + k + f'/{img_name}.png'
-                self.img_path_cache[img_name] = full_path
-                return full_path
+        return tile_id
 
     def get_cache(self):
         match self.view:

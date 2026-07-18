@@ -33,7 +33,7 @@ class UI:
 
         screen_xy = ((pg.Vector2(x, y) * TILE_SIZE) - self.cam.offset) * self.cam.zoom_scale
         if not (air_tile := tile_id == self.proc_gen.tile_ids['air']):
-            img = self.assets.get_img(self.chunk_renderer.get_img_path(tile_id))
+            img = self.assets.graphics['terrain'].files[self.proc_gen.id_tiles[tile_id]]
             screen.blit(
                 img if self.cam.zoom_scale == 1.0 else pg.transform.scale(img, pg.Vector2(TILE_SIZE, TILE_SIZE) * self.cam.zoom_scale), 
                 screen_xy,
@@ -49,10 +49,13 @@ class UI:
         valid = abs(self.player.x - x) <= TILE_REACH_RADIUS and abs(self.player.y - y) <= TILE_REACH_RADIUS and \
             not air_tile
         if self.chunk_renderer.view != 'z slice': 
-            valid &= abs(self.player.z - self.proc_gen.z_map[x, y]) <= 1
+            valid &= abs(self.player.z - int(self.proc_gen.z_map[x, y])) <= 1
     
         self.reachable_tile_surf.fill('green' if valid else 'red')
         screen.blit(self.reachable_tile_surf, screen_xy)
+
+    def spawn_item_sprite(self, tile_id, xy):
+        tile_img = self.assets.get_tile_img
 
     def update(self, screen):
         self.mini_map.update(screen)

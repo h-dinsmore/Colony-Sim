@@ -45,7 +45,7 @@ class MiniMap:
             self.outline_rect.topleft - pg.Vector2(self.outline_w, self.outline_w), 
             self.outline_rect.size + (pg.Vector2(self.outline_w, self.outline_w) * 2)
         )
-        self.outline_color1, self.outline_color2 = 'darkorchid', 'darkorchid4'
+        self.outline_color1, self.outline_color2 = 'mistyrose2', 'mistyrose3'
 
         self.prev_cam_offset = cam.offset.copy()
         self.prev_view = chunk_renderer.view

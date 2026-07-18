@@ -23,7 +23,7 @@ class Village:
 
         player_y, player_x = np.where(self.spawn_map == 1)
         self.player = Player(
-            self.assets.get_img('../graphics/entities/villagers/player/idle.png'),
+            self.assets.graphics['entities'].subfolders['villagers'].subfolders['player'].files,
             (int(player_y[0]), int(player_x[0]), self.spawn_z), 
             [self.village_sprs, self.player_spr],
             screen,
@@ -36,7 +36,7 @@ class Village:
         for i in range(2, self.num_pop + 1): 
             y, x = np.where(self.spawn_map == i)
             Villager(
-                self.assets.get_img('../graphics/entities/villagers/idle.png'),
+                self.assets.graphics['entities'].subfolders['villagers'].files,
                 (int(y[0]), int(x[0]), self.spawn_z),
                 [self.village_sprs],
                 screen,

@@ -30,7 +30,7 @@ class InfoUI:
         )
         
         self.anti_alias = False
-        self.font_color = 'white'
+        self.font_color = 'black'
 
         self.show = True
 

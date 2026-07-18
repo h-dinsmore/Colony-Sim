@@ -149,8 +149,31 @@ class ProcGen:
         x, y = np.indices(z_map.shape)
         surface_tiles = self.tile_map[x, y, z_map].copy()
         for (min_dif, max_dif), tile in Z_DIF_ICONS.items():
-            mask = (z_difs >= min_dif) & (z_difs < max_dif) if min_dif > 0 else (z_difs <= min_dif) & (z_difs > max_dif)
+            mask = ((z_difs >= min_dif) & (z_difs < max_dif)) if min_dif > 0 else ((z_difs <= min_dif) & (z_difs > max_dif))
             mask &= (z_difs != 0) & (z_map != 0) # ignore tiles on the same z level or air 
             surface_tiles[mask] = self.tile_ids[tile]
 
         self.z_dif_map[z] = surface_tiles
+
+    def update_map_after_mined_tile(self, x, y, old_z):
+        self.tile_map[x, y, old_z] = self.tile_ids['air']
+        
+        new_surface_z = -1
+        for z in range(old_z - 1, -1, -1):
+            if self.tile_map[x, y, z] != self.tile_ids['air']:
+                new_surface_z = z
+                break
+        self.z_map[x, y] = new_surface_z
+      
+        if old_z in self.z_dif_map:
+            if new_surface_z == -1: # all tiles below old_z are air
+                self.z_dif_map[old_z][x, y] = self.tile_ids['air']
+            else:
+                if (z_dif := abs(old_z - new_surface_z)) != 0:
+                    for (min_dif, max_dif) in Z_DIF_ICONS:
+                        if ((z_dif >= min_dif) and (z_dif < max_dif)) if min_dif > 0 else ((z_dif <= min_dif) and (z_dif > max_dif)):
+                            self.z_dif_map[old_z][x, y] = self.tile_ids[Z_DIF_ICONS[(min_dif, max_dif)]]
+                            break
+                else:
+                    self.z_dif_map[old_z][x, y] = self.tile_ids[self.tile_map[x, y, new_surface_z]]
+        

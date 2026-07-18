@@ -5,8 +5,8 @@ from villager import Villager
 from settings import KEY_BINDINGS, MAP_TILE_SIZE, TILE_SIZE, SOLID_TILES, SURFACE_TERRAIN, FPS, Z_DIF_ICONS
 
 class Player(Villager):
-    def __init__(self, image, xyz, spr_groups, screen, keyboard, mouse, proc_gen, chunk_renderer):
-        super().__init__(image, xyz, spr_groups, screen, proc_gen, chunk_renderer)
+    def __init__(self, img_folder, xyz, spr_groups, screen, keyboard, mouse, proc_gen, chunk_renderer):
+        super().__init__(img_folder, xyz, spr_groups, screen, proc_gen, chunk_renderer)
         self.keyboard = keyboard
         self.mouse = mouse
         self.player_spr, self.village_sprs = spr_groups
@@ -31,7 +31,8 @@ class Player(Villager):
                 self.x, self.y = new_x, new_y
                 self.rect.x += dx * TILE_SIZE
                 self.rect.y += dy * TILE_SIZE
-                
+                self.biome_in = self.proc_gen.id_biomes[int(self.proc_gen.biome_map[self.x, self.y])]
+
                 if z < max(1, self.z - 1):
                     self.get_fall_damage(z) 
 
@@ -40,8 +41,7 @@ class Player(Villager):
                         spr.update_visibility()
 
                     self.z = z
-                    
-                self.biome_in = self.proc_gen.id_biomes[int(self.proc_gen.biome_map[self.x, self.y])]
+                    self.living = z > -1
 
     def get_fall_damage(self, z):
         self.health = max(0, (self.z - z) * 2)
@@ -57,20 +57,23 @@ class Player(Villager):
                 self.mine_tile(x, y, z)
             else:
                 pass # chopping trees, gathering plants,
+        else:
+            if self.action == 'mining':
+                self.action = 'idle'
     
     def mine_tile(self, x, y, z):
         self.action = 'mining'
         hardness = max(0, self.proc_gen.tile_hardness_map[x, y, z] - ((self.strength * self.get_tool_strength()) / FPS))
-        self.proc_gen.tile_hardness_map[x, y, z] = hardness
+        self.proc_gen.tile_hardness_map[x, y, z] = hardness 
         if hardness == 0:
-            self.proc_gen.tile_map[x, y, z] = self.proc_gen.tile_ids['air']
-            self.proc_gen.z_map[x, y] = max(0, self.proc_gen.z_map[x, y] - 1)
-            if z not in self.proc_gen.z_dif_map:
-                self.proc_gen.update_z_dif_map(z)
-            else:
-                self.proc_gen.z_dif_map[z][x, y] = self.proc_gen.tile_ids['shallow valley']
-
-            self.chunk_renderer.update_tile_in_chunk(x, y, z)
+            self.add_item_to_inv(self.proc_gen.tile_map[x, y, z])
+            self.proc_gen.update_map_after_mined_tile(x, y, z) # update the tile map before the chunk renderer to show the tile below
+            z = int(self.proc_gen.z_map[x, y])
+            if (x, y) == (self.x, self.y):
+                self.z = z
+                self.living = z > -1
+                
+        self.chunk_renderer.update_tile_in_chunk(x, y, z, hardness)
 
     def update(self):
         super().update()

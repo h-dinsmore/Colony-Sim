@@ -4,9 +4,11 @@ from random import randint, choice
 from settings import MONTHS_DAYS, TILE_SIZE
 
 class Villager(pg.sprite.Sprite):
-    def __init__(self, image, xyz, spr_groups, screen, proc_gen, chunk_renderer):
+    def __init__(self, img_folder, xyz, spr_groups, screen, proc_gen, chunk_renderer):
         super().__init__(*spr_groups)
-        self.image = image
+        self.img_folder = img_folder
+        self.action = 'idle'
+        self.image = img_folder[self.action]
         self.image.set_colorkey((0, 0, 0))
         self.x, self.y, self.z = xyz
         self.rect = self.image.get_rect(center=(pg.Vector2(self.x, self.y) * TILE_SIZE))
@@ -14,7 +16,6 @@ class Villager(pg.sprite.Sprite):
         self.proc_gen = proc_gen
         self.chunk_renderer = chunk_renderer
         
-        self.action = 'idle'
         self.item_holding = None
         self.facing_dir = 'left'
         self.visible = True
@@ -58,6 +59,12 @@ class Villager(pg.sprite.Sprite):
             return 1
         else:
             pass
+
+    def add_item_to_inv(self, tile_id):
+        if (item_name := self.proc_gen.id_tiles[tile_id]) not in self.inv:
+            self.inv[item_name] = 1
+        else:
+            self.inv[item_name] = min(self.max_inv_items, self.inv[item_name] + 1)
 
     def update(self):
         for alarm in self.alarms.values():
