@@ -34,7 +34,8 @@ class ChunkRenderer:
 
             if new_z_lvl:
                 self.prev_z = self.player.z
-                self.proc_gen.update_z_dif_map(self.player.z)
+                if self.player.z not in self.proc_gen.z_dif_map:
+                    self.proc_gen.update_z_dif_map(self.player.z)
 
             if new_view:
                 self.prev_view = self.view
@@ -47,9 +48,10 @@ class ChunkRenderer:
         cam_x, cam_y = self.cam.offset // self.chunk_px_size
         start_x = max(0, min(int(cam_x), self.max_chunk_xy[0]))
         start_y = max(0, min(int(cam_y), self.max_chunk_xy[1]))
+        z_slice_view = self.view == 'z slice'
         return [
             ((start_x + x) * self.chunk_px_size, (start_y + y) * self.chunk_px_size, 
-            int(self.proc_gen.z_map[start_x + x, start_y + y])) # keep the surface z even for the z view so update_tile_in_chunk() can calculate the key's z in case the player's z doesn't match the tile's
+            self.player.z if z_slice_view else int(self.proc_gen.z_map[start_x + x, start_y + y]))
             for x in range((ceil(RES[0] / self.cam.zoom_scale) // self.chunk_px_size) + 2) 
             for y in range((ceil(RES[1] / self.cam.zoom_scale) // self.chunk_px_size) + 2) 
         ]
@@ -73,46 +75,61 @@ class ChunkRenderer:
         self.img_cache[self.view][(chunk_x, chunk_y, chunk_z)] = img
         return img
 
-    def update_tile_in_chunk(self, tile_x, tile_y, z, hardness):
+    def update_tile_in_chunk(self, tile_x, tile_y, old_z, new_z, hardness):
+        chunk_tile_x = tile_x // self.chunk_tile_size
+        chunk_tile_y = tile_y // self.chunk_tile_size
         chunk_px_x = ((tile_x * TILE_SIZE) // self.chunk_px_size) * self.chunk_px_size
         chunk_px_y = ((tile_y * TILE_SIZE) // self.chunk_px_size) * self.chunk_px_size
-        chunk_z = int(self.proc_gen.z_map[chunk_px_x // self.chunk_px_size, chunk_px_y // self.chunk_px_size])
+        chunk_key = (
+            chunk_px_x, chunk_px_y, 
+            old_z if (chunk_tile_x, chunk_tile_y) == (tile_x, tile_y) else int(self.proc_gen.z_map[chunk_tile_x, chunk_tile_y])
+        )
 
         match self.view:
-            case 'surface': z_idx = self.proc_gen.z_map[tile_x, tile_y]
-            case 'z slice': z_idx = self.player.z
-            case 'elevation': z_idx = self.proc_gen.z_dif_map[self.player.z][tile_x, tile_y]
+            case 'surface': 
+                z_idx = self.proc_gen.z_map[tile_x, tile_y]
+            case 'z slice': 
+                z_idx = self.player.z
+            case 'elevation': 
+                z_idx = self.proc_gen.z_dif_map[self.player.z][tile_x, tile_y]
+                
         tile_name = self.proc_gen.id_tiles[self.proc_gen.tile_map[tile_x, tile_y, z_idx]]
         
         screen_tile_size = TILE_SIZE * self.cam.zoom_scale
         tile_xy_in_chunk = (pg.Vector2(tile_x, tile_y) * TILE_SIZE) - pg.Vector2(chunk_px_x, chunk_px_y)
         solid_tile = hardness > 0 and tile_name in SOLID_TILES
-        for view in [v for v in self.view_types if (chunk_px_x, chunk_px_y, chunk_z) in self.img_cache[v]]:
-            self.img_cache[view][(chunk_px_x, chunk_px_y, chunk_z)].blit(
-                self.get_tile_img(view, screen_tile_size, tile_name, z, hardness, solid_tile), 
+        for view in [v for v in self.view_types if chunk_key in self.img_cache[v]]:
+            self.img_cache[view][chunk_key].blit(
+                self.get_tile_img(view, screen_tile_size, tile_name, new_z, hardness, solid_tile), 
                 tile_xy_in_chunk
             )
 
     def get_tile_img(self, view, screen_tile_size, tile_name, z, hardness, solid_tile):
         match view:
             case 'z slice':
-                tile_img = pg.Surface((screen_tile_size, screen_tile_size), pg.SRCALPHA)
-                tile_img.fill(self.assets.colors['transparent'])
+                tile_img = self.get_air_tile_img(screen_tile_size)
 
             case 'surface':
                 if z == 0:
-                    tile_img = pg.Surface((screen_tile_size, screen_tile_size), pg.SRCALPHA)
-                    tile_img.fill(self.assets.colors['transparent'])
+                    tile_img = self.get_air_tile_img(screen_tile_size)
                 else:
-                    tile_img = self.assets.graphics['terrain'].files[tile_name]
-                    if solid_tile: # if hardness is 0 then the map was updated before this function was called and the tile below it will show
-                        tile_img.set_alpha(int(255 * (hardness / SOLID_TILES[tile_name]['hardness'])))
+                    if tile_name != 'air':
+                        tile_img = self.assets.graphics['terrain'].files[tile_name].copy()
+                        if solid_tile: # if hardness is 0 then the map was updated before this function was called and the tile below it will show
+                            tile_img.set_alpha(int(255 * (hardness / SOLID_TILES[tile_name]['hardness'])))
+                    else:
+                        tile_img = self.get_air_tile_img(screen_tile_size)
 
             case 'elevation':
-                tile_img = self.assets.graphics['terrain'].files[tile_name]
+                tile_img = self.assets.graphics['terrain'].files[tile_name].copy()
                 if solid_tile:
                     tile_img.set_alpha(int(255 * (hardness / SOLID_TILES[tile_name]['hardness'])))
         return tile_img
+    
+    def get_air_tile_img(self, screen_tile_size):
+        img = pg.Surface((screen_tile_size, screen_tile_size), pg.SRCALPHA)
+        img.fill(self.assets.colors['transparent'])
+        return img
 
     def get_tile_id(self, x, y):
         tile_id = self.proc_gen.tile_ids['air']

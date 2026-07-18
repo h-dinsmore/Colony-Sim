@@ -39,19 +39,14 @@ class UI:
                 screen_xy,
                 special_flags=pg.BLEND_RGB_ADD
             )
-        self.render_reachable_tile_surf(screen, screen_xy, x, y, air_tile)
+        self.render_reachable_tile_surf(screen, screen_xy, x, y, z, air_tile)
 
-    def render_reachable_tile_surf(self, screen, screen_xy, x, y, air_tile):
+    def render_reachable_tile_surf(self, screen, screen_xy, x, y, z, air_tile):
         if self.old_zoom_scale != self.cam.zoom_scale:
             self.old_zoom_scale = self.cam.zoom_scale
             self.reachable_tile_surf = pg.transform.scale(self.reachable_tile_surf, pg.Vector2(TILE_SIZE, TILE_SIZE) * self.cam.zoom_scale)
-        
-        valid = abs(self.player.x - x) <= TILE_REACH_RADIUS and abs(self.player.y - y) <= TILE_REACH_RADIUS and \
-            not air_tile
-        if self.chunk_renderer.view != 'z slice': 
-            valid &= abs(self.player.z - int(self.proc_gen.z_map[x, y])) <= 1
-    
-        self.reachable_tile_surf.fill('green' if valid else 'red')
+
+        self.reachable_tile_surf.fill('green' if self.player.check_reachable_tile(x, y, z, air_tile) else 'red')
         screen.blit(self.reachable_tile_surf, screen_xy)
 
     def spawn_item_sprite(self, tile_id, xy):
