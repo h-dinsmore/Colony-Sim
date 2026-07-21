@@ -1,10 +1,10 @@
 import pygame as pg
-
 from os import walk
 from os.path import join
 from pathlib import Path
 from dataclasses import dataclass, field
-from settings import TILE_SIZE, ELEVATIONS
+
+from settings import TILE_SIZE, ELEVATIONS, SOLID_TILES
 
 @dataclass
 class FolderDir:
@@ -16,14 +16,14 @@ class Assets:
     def __init__(self, proc_gen):
         self.proc_gen = proc_gen
         
+        self.img_cache, self.img_dir_cache = {}, {}
         self.graphics_load_runtime = {'entities', 'terrain'} 
         self.graphics_dir_root = Path('..') / 'graphics'
         self.graphics = {
             folder.name: self.load_subfolders(folder, folder.name in self.graphics_load_runtime) 
             for folder in self.graphics_dir_root.iterdir() if folder.is_dir()
         }
-        self.img_cache, self.folder_cache = {}, {}
-
+        
         self.colors = {
             'text': 'darkorchid',
             'transparent': (0,0,0,0)
@@ -42,43 +42,31 @@ class Assets:
     def load_folder(self, dir_path):
         imgs = {}
         for path, _, files in walk(dir_path):    
-            for name in files:
-                key = name.split('.')[0] # not reassigning 'name' because it needs the file extension when passed to load_img()
-                imgs[int(key) if key.isnumeric() else key] = self.load_img(join(path, name))
+            for file_name in files:
+                key = file_name.split('.')[0] # not reassigning 'name' because it needs the file extension when passed to load_img()
+                img = self.load_img(join(path, file_name))
+                imgs[key] = img
+                self.img_cache[key] = img
         return imgs
     
     def load_frames(self, dir_path):
         frames = []
         for path, _, files in walk(dir_path):   
-            for file in sorted(files, key=lambda name: int(name.split('.')[0])): 
+            for file in sorted(files, key=lambda file_name: int(file_name.split('.')[0])): 
                 frames.append(self.load_img(join(path, file)))
         return frames
 
     def load_subfolders(self, dir_path, load_files=False):
         folder_dir = FolderDir(loaded=load_files)
-        if load_files:
-            folder_dir.files = self.load_folder(dir_path)
-
+        folder_dir.files = self.load_folder(dir_path) if load_files else self.cache_img_dirs(dir_path)
         for folder in (f for f in dir_path.iterdir() if f.is_dir()):
             folder_dir.subfolders[folder.name] = self.load_subfolders(folder, load_files)
         return folder_dir
 
-    def get_folder(self, dir_path):
-        if dir_path in self.folder_cache:
-            return self.folder_cache[dir_path]
-        
-        dir_parts = Path(dir_path).relative_to(self.graphics_dir_root).parts
-        current_folder = self.graphics[dir_parts[0]] 
-
-        for folder in dir_parts[1:]: 
-            current_folder = current_folder.subfolders[folder]
-
-        if not current_folder.loaded:
-            files = self.load_folder(dir_path)
-            current_folder.files = files
-            current_folder.loaded = True
-            self.folder_cache[dir_path] = files
-        return current_folder
+    def cache_img_dirs(self, dir_path):
+        for path, _, files in walk(dir_path):    
+            for file_name in files:
+                self.img_dir_cache[file_name.split('.')[0]] = join(dir_path, file_name)
     
     def load_fonts(self, dir_path):
         fonts = {}
@@ -87,3 +75,8 @@ class Assets:
                 name_split = name.split('.')[0]
                 fonts[name_split] = pg.font.Font(join(path, name), self.font_sizes[name_split])
         return fonts
+
+    def get_img(self, file_name):
+        if file_name in self.img_cache:
+            return self.img_cache[file_name]
+        return self.load_img(self.img_dir_cache[file_name])
