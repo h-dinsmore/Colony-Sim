@@ -13,6 +13,7 @@ class Village:
         self.keyboard = keyboard
         self.mouse = mouse
         self.screen = screen
+        self.ui = None # not initialized yet
         
         self.num_pop, self.num_max_pop = 3, 128
         self.spawn_z = None
@@ -30,7 +31,8 @@ class Village:
             keyboard,
             mouse,
             proc_gen,
-            chunk_renderer
+            chunk_renderer,
+            self # to have a reference to UI after it's set
         )
 
         for i in range(2, self.num_pop + 1): 
@@ -41,7 +43,8 @@ class Village:
                 [self.village_sprs],
                 screen,
                 proc_gen,
-                chunk_renderer
+                chunk_renderer,
+                self
             )
 
     def get_spawn_map(self):

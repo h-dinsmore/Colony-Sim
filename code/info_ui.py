@@ -14,7 +14,7 @@ class InfoUI:
         self.village = village
         
         self.surf = pg.Surface((mini_map.img.width + (self.mini_map.outline_w * self.mini_map.num_outlines * 2), 32))
-        self.alpha = 215
+        self.alpha = 200
         self.surf.set_alpha(self.alpha)
 
         self.default_topleft = mini_map.outline_rect2.bottomleft
@@ -24,7 +24,7 @@ class InfoUI:
         self.show = True
 
     def render(self, screen):
-        self.surf.fill(self.mini_map.outline_color2)
+        self.surf.fill(self.mini_map.outline_color1)
         self.rect.topleft = self.default_topleft if self.mini_map.render else (0, 0)
 
         fps_surf = self.font.render(f'FPS:{self.clock.get_fps():.2f}', self.ui.anti_alias, self.ui.font_color)

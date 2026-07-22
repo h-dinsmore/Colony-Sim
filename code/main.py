@@ -46,6 +46,7 @@ class Game:
             self.cam, self.proc_gen, self.village.player, self.keyboard, self.mouse, self.chunk_renderer, 
             self.weather, self.assets, self.clock, self.village
         )
+        self.village.ui = self.ui
 
     def update_visible_surf(self): 
         scaled_res = pg.Vector2(RES) / self.cam.zoom_scale

@@ -4,7 +4,7 @@ from random import randint, choice
 from settings import MONTHS_DAYS, TILE_SIZE
 
 class Villager(pg.sprite.Sprite):
-    def __init__(self, img_folder, xyz, spr_groups, screen, proc_gen, chunk_renderer):
+    def __init__(self, img_folder, xyz, spr_groups, screen, proc_gen, chunk_renderer, village):
         super().__init__(*spr_groups)
         self.img_folder = img_folder
         self.action = 'idle'
@@ -15,6 +15,7 @@ class Villager(pg.sprite.Sprite):
         self.screen = screen
         self.proc_gen = proc_gen
         self.chunk_renderer = chunk_renderer
+        self.village = village
         
         self.item_holding = None
         self.facing_dir = 'left'
@@ -23,7 +24,8 @@ class Villager(pg.sprite.Sprite):
         self.alarms = {}
 
         self.inv = {}
-        self.max_inv_items = 64
+        self.num_inv_slots = 64
+        self.max_slot_storage = 64
 
         self.hunger = 100 
         self.thirst = 100
@@ -61,10 +63,16 @@ class Villager(pg.sprite.Sprite):
             pass
 
     def add_item_to_inv(self, tile_id):
-        if (item_name := self.proc_gen.id_tiles[tile_id]) not in self.inv:
+        if (item_name := self.proc_gen.id_tiles[tile_id]) not in self.inv and len(self.inv) < num_inv_slots:
             self.inv[item_name] = {'amount': 1, 'idx': len(self.inv)}
+            if isinstance(self, self.village.player):
+                self.village.ui.player_inv_ui.num_slots_filled += 1
+                self.village.ui.player_inv_ui.item_names.append(item_name)
         else:
-            self.inv[item_name]['amount'] = min(self.max_inv_items, self.inv[item_name]['amount'] + 1)
+            if (item_num := min(self.max_slot_storage, self.inv[item_name]['amount'] + 1)) <= self.max_slot_storage:
+                self.inv[item_name]['amount'] = item_num
+            else: # update the dictionary to have each slot of the same item be <name> 0,1,...
+                pass
 
     def update(self):
         for alarm in self.alarms.values():

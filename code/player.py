@@ -5,8 +5,8 @@ from villager import Villager
 from settings import KEY_BINDINGS, MAP_TILE_SIZE, TILE_SIZE, SOLID_TILES, SURFACE_TERRAIN, FPS, Z_DIF_ICONS, TILE_REACH_RADIUS
 
 class Player(Villager):
-    def __init__(self, img_folder, xyz, spr_groups, screen, keyboard, mouse, proc_gen, chunk_renderer):
-        super().__init__(img_folder, xyz, spr_groups, screen, proc_gen, chunk_renderer)
+    def __init__(self, img_folder, xyz, spr_groups, screen, keyboard, mouse, proc_gen, chunk_renderer, village):
+        super().__init__(img_folder, xyz, spr_groups, screen, proc_gen, chunk_renderer, village)
         self.keyboard = keyboard
         self.mouse = mouse
         self.player_spr, self.village_sprs = spr_groups
