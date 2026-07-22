@@ -63,9 +63,9 @@ class Villager(pg.sprite.Sprite):
             pass
 
     def add_item_to_inv(self, tile_id):
-        if (item_name := self.proc_gen.id_tiles[tile_id]) not in self.inv and len(self.inv) < num_inv_slots:
+        if (item_name := self.proc_gen.id_tiles[tile_id]) not in self.inv and len(self.inv) < self.num_inv_slots:
             self.inv[item_name] = {'amount': 1, 'idx': len(self.inv)}
-            if isinstance(self, self.village.player):
+            if self in self.village.player_spr:
                 self.village.ui.player_inv_ui.num_slots_filled += 1
                 self.village.ui.player_inv_ui.item_names.append(item_name)
         else:

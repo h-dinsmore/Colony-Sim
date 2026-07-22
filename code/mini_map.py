@@ -5,12 +5,14 @@ from random import randint, choice
 from settings import MAP_TILE_SIZE, SOLID_TILES, TILE_SIZE, RES, KEY_BINDINGS, SCREEN_TILES
 
 class MiniMap:
-    def __init__(self, cam, proc_gen, player, keyboard, chunk_renderer, sky_rgb):
+    def __init__(self, ui, cam, proc_gen, player, keyboard, chunk_renderer, sky_rgb):
+        self.ui = ui
         self.cam = cam
         self.proc_gen = proc_gen
         self.player = player
         self.keyboard = keyboard
         self.chunk_renderer = chunk_renderer
+
         self.seen_tiles = np.full(MAP_TILE_SIZE, False, dtype=bool) 
         self.non_tile_rgbs = {
             'air': sky_rgb, 
@@ -51,7 +53,7 @@ class MiniMap:
         self.prev_cam_offset = cam.offset.copy()
         self.prev_view = chunk_renderer.view
         self.prev_z = self.player.z
-        self.render = True
+        self.show = True
 
     def render_tiles(self, screen): 
         if self.check_display_update():
@@ -167,9 +169,10 @@ class MiniMap:
 
     def update(self, screen):
         if self.keyboard.pressed_keys[KEY_BINDINGS['mini map view']]:
-            self.render = not self.render
+            self.show = not self.show
+            self.ui.rect.height = self.ui.update_rect_height()
 
-        if self.render:
+        if self.show:
             self.render_tiles(screen)
             pg.draw.rect(screen, self.outline_color1, self.outline_rect, self.outline_w)
             pg.draw.rect(screen, self.outline_color2, self.outline_rect2, self.outline_w)
