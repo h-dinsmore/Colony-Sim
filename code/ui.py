@@ -2,6 +2,7 @@ import pygame as pg
 
 from mini_map import MiniMap
 from info_ui import InfoUI
+from player_inventory_ui import PlayerInventoryUI
 from settings import TILE_SIZE, MAP_TILE_SIZE, TILE_REACH_RADIUS
 
 class UI:
@@ -13,9 +14,14 @@ class UI:
         self.cam, self.old_zoom_scale = cam, cam.zoom_scale
         self.player = player
 
+        self.anti_alias = False
+        self.font_color = 'white'
+
         self.mini_map = MiniMap(cam, proc_gen, player, keyboard, chunk_renderer, weather.sky.sky_rgb)
 
-        self.info_ui = InfoUI(self.mini_map, player, keyboard, weather, assets.fonts['default'], clock, village)
+        self.info_ui = InfoUI(self, self.mini_map, player, keyboard, weather, assets.fonts['default'], clock, village)
+
+        self.player_inv_ui = PlayerInventoryUI(self, player, self.mini_map, self.info_ui, assets, keyboard)
 
         self.reachable_tile_surf = pg.Surface((TILE_SIZE, TILE_SIZE))
         self.reachable_tile_surf.set_alpha(64)
@@ -55,4 +61,5 @@ class UI:
     def update(self, screen):
         self.mini_map.update(screen)
         self.info_ui.update(screen)
+        self.player_inv_ui.update(screen)
         self.highlight_tile_at_mouse(screen)

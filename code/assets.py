@@ -25,7 +25,6 @@ class Assets:
         }
         
         self.colors = {
-            'text': 'darkorchid',
             'transparent': (0,0,0,0)
         }
         
@@ -58,7 +57,11 @@ class Assets:
 
     def load_subfolders(self, dir_path, load_files=False):
         folder_dir = FolderDir(loaded=load_files)
-        folder_dir.files = self.load_folder(dir_path) if load_files else self.cache_img_dirs(dir_path)
+        if load_files:
+            folder_dir.files = self.load_folder(dir_path) 
+
+        self.cache_img_dirs(dir_path)
+
         for folder in (f for f in dir_path.iterdir() if f.is_dir()):
             folder_dir.subfolders[folder.name] = self.load_subfolders(folder, load_files)
         return folder_dir

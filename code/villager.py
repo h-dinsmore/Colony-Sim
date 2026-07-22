@@ -62,9 +62,9 @@ class Villager(pg.sprite.Sprite):
 
     def add_item_to_inv(self, tile_id):
         if (item_name := self.proc_gen.id_tiles[tile_id]) not in self.inv:
-            self.inv[item_name] = 1
+            self.inv[item_name] = {'amount': 1, 'idx': len(self.inv)}
         else:
-            self.inv[item_name] = min(self.max_inv_items, self.inv[item_name] + 1)
+            self.inv[item_name]['amount'] = min(self.max_inv_items, self.inv[item_name]['amount'] + 1)
 
     def update(self):
         for alarm in self.alarms.values():

@@ -13,8 +13,11 @@ KEY_BINDINGS = {
     'elevation view': pg.K_z,
     'z slice view': pg.K_x,
     'surface view': pg.K_LALT,
-    'mini map view': pg.K_q,
-    'info ui view': pg.K_e
+    'mini map view': pg.K_m,
+    'info ui view': pg.K_TAB,
+    'player inv view': pg.K_i,
+    'open/close player inv': pg.K_j
+
 }
 
 TILE_SIZE = 16
