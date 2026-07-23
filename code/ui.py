@@ -15,7 +15,7 @@ class UI:
         self.player = player
 
         self.anti_alias = False
-        self.font_color = 'black'
+        self.font_color = 'white'
 
         self.mini_map = MiniMap(self, cam, proc_gen, player, keyboard, chunk_renderer, weather.sky.sky_rgb)
 

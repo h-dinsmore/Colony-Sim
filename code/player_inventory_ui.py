@@ -24,10 +24,7 @@ class PlayerInventoryUI:
         self.show = True
         self.open = False # show only the first row or the full inventory
         
-        self.txt_font = pg.font.Font(join('..', 'graphics', 'fonts', 'default.ttf'), size=10)
-        self.num_font = pg.font.Font(join('..', 'graphics', 'fonts', 'default.ttf'), size=8)
         self.line_color = self.mini_map.outline_color2
-
         self.surf_color = self.mini_map.outline_color1
         self.surf_open, self.surf_closed = self.get_surfs()
         self.rect_open = self.surf_open.get_rect()
@@ -53,6 +50,7 @@ class PlayerInventoryUI:
             self.old_topleft = topleft
             self.rect_open.topleft = topleft
             self.rect_closed.topleft = topleft
+        return topleft
 
     def get_surfs(self):
         outline_offset = pg.Vector2(self.outline_w, self.outline_w)
@@ -80,19 +78,22 @@ class PlayerInventoryUI:
         mouse_overlap = self.grid_overlap_idx is not None
         for x in range(self.num_cols):
             for y in range(self.num_rows if self.open else 1):
-                if mouse_overlap and (x, y) == self.grid_overlap_idx:
-                    surf.blit(
-                        self.box_highlight_surf, 
-                        self.box_highlight_surf.get_rect(topleft=pg.Vector2(x, y) * self.box_len)
-                    )
+                box_has_item = (inv_idx := (self.num_cols * y) + x) < self.num_slots_filled
 
-                if (inv_idx := (self.num_cols * y) + x) < self.num_slots_filled:
+                if mouse_overlap and (x, y) == self.grid_overlap_idx:
+                    self.render_mouse_overlap(surf, x, y, box_has_item, inv_idx, screen)
+                
+                if box_has_item:
                     if (item_name := self.item_names[inv_idx]) not in self.item_surfs:
-                        self.item_surfs[item_name] = pg.transform.scale(
-                            self.assets.get_img(item_name), (self.box_len * 0.75, self.box_len * 0.75)
+                        self.item_surfs[item_name] = pg.transform.scale(self.assets.get_img(item_name), (self.box_len * 0.75, self.box_len * 0.75))
+                    surf.blit(self.item_surfs[item_name], self.item_surfs[item_name].get_rect(center=(pg.Vector2(x, y) * self.box_len) + half_box_len))
+
+                    if (item_amount := str(self.player.inv[item_name]['amount'])) not in self.assets.font_text_cache['inv item amounts']:
+                        self.assets.font_text_cache['inv item amounts'][item_amount] = self.assets.fonts['inv item amounts'].render(
+                            item_amount, self.ui.anti_alias, self.ui.font_color
                         )
-                    item_rect = self.item_surfs[item_name].get_rect(center=(pg.Vector2(x, y) * self.box_len) + half_box_len)
-                    surf.blit(self.item_surfs[item_name], item_rect)
+                    font_surf = self.assets.font_text_cache['inv item amounts'][item_amount]
+                    surf.blit(font_surf, font_surf.get_rect(bottomright=(pg.Vector2(x, y) * self.box_len) + pg.Vector2(self.box_len - 1)))
                     
         screen.blit(surf, rect)
 
@@ -104,6 +105,23 @@ class PlayerInventoryUI:
             self.grid_overlap_idx = (int(grid_x), int(grid_y))
         else:
             self.grid_overlap_idx = None
+
+    def render_mouse_overlap(self, surf, x, y, box_has_item, inv_idx, screen):
+        surf.blit(self.box_highlight_surf, self.box_highlight_surf.get_rect(topleft=pg.Vector2(x, y) * self.box_len))
+        if box_has_item:
+            if (item_name := self.item_names[inv_idx]) not in self.assets.font_text_cache['inv item names']:
+                text_surf = self.assets.fonts['inv item names'].render(item_name, self.ui.anti_alias, self.ui.font_color)
+                self.assets.font_text_cache['inv item names'][item_name] = {'text': text_surf}
+                
+                bg_surf = pg.Surface(text_surf.size + pg.Vector2(4, 4), pg.SRCALPHA)
+                bg_surf.set_alpha(surf.get_alpha())
+                bg_surf.fill('black')
+                self.assets.font_text_cache['inv item names'][item_name]['bg'] = bg_surf
+
+            text_surf, bg_surf = self.assets.font_text_cache['inv item names'][item_name].values()
+            bg_rect = bg_surf.get_rect(topleft=self.rect.topleft + (pg.Vector2(x, y) * self.box_len) + pg.Vector2(1, self.box_len))
+            screen.blit(bg_surf, bg_rect) # blitting on the screen in case the grid is closed and the subsurface will crop out the text
+            screen.blit(text_surf, text_surf.get_rect(topleft=bg_rect.topleft + pg.Vector2(2, 2)))
 
     def check_keyboard_input(self):
         if self.keyboard.pressed_keys[KEY_BINDINGS['player inv view']]:

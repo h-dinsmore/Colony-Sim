@@ -28,8 +28,10 @@ class Assets:
             'transparent': (0,0,0,0)
         }
         
-        self.font_sizes = {'default': 16}
+        self.font_sizes = {'default': 16, 'inv item amounts': 14, 'inv item names': 18}
+        self.font_variants = {'default': ('inv item amounts', 'inv item names')} # uses a loaded font but at a different size
         self.fonts = self.load_fonts(join('..', 'graphics', 'fonts'))
+        self.font_text_cache = {k: {} for k in self.fonts}
 
     @staticmethod
     def load_img(dir_path):
@@ -75,8 +77,12 @@ class Assets:
         fonts = {}
         for path, _, files in walk(dir_path):    
             for name in files:
-                name_split = name.split('.')[0]
-                fonts[name_split] = pg.font.Font(join(path, name), self.font_sizes[name_split])
+                font_key = name.split('.')[0]
+                fonts[font_key] = pg.font.Font(join(path, name), self.font_sizes[font_key])
+
+                if font_key in self.font_variants:
+                    for font_var in self.font_variants[font_key]:
+                        fonts[font_var] = pg.font.Font(join(path, name), self.font_sizes[font_var])
         return fonts
 
     def get_img(self, file_name):
