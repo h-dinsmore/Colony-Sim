@@ -176,4 +176,3 @@ class ProcGen:
                             break
                 else:
                     self.z_dif_map[old_z][x, y] = self.tile_ids[self.tile_map[x, y, new_surface_z]]
-        

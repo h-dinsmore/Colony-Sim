@@ -21,7 +21,7 @@ class UI:
 
         self.info_ui = InfoUI(self, self.mini_map, player, keyboard, weather, assets.fonts['default'], clock, village)
 
-        self.player_inv_ui = PlayerInventoryUI(self, player, self.mini_map, self.info_ui, assets, keyboard)
+        self.player_inv_ui = PlayerInventoryUI(self, player, self.mini_map, self.info_ui, assets, keyboard, mouse)
 
         self.reachable_tile_surf = pg.Surface((TILE_SIZE, TILE_SIZE))
         self.reachable_tile_surf.set_alpha(64)
