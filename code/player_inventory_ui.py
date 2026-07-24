@@ -116,10 +116,10 @@ class PlayerInventoryUI:
             text_surf, bg_surf = self.assets.font_text_cache['inv item names'][item_name].values()
             if (slot_below_row1 := inv_idx > self.num_cols) or self.open:
                 render_surf = surf 
-                topleft = pg.Vector2(x, y) * self.slot_len + pg.Vector2(0, self.slot_len + self.outline_w)
+                topleft = pg.Vector2(x, y) * self.slot_len + pg.Vector2(0, self.slot_len + self.line_w)
             else:
                 render_surf = screen # avoids getting cropped out by the subsurface
-                topleft = (self.rect.topleft + (pg.Vector2(x, y) * self.slot_len) + pg.Vector2(0, self.slot_len + self.outline_w))
+                topleft = (self.rect.topleft + (pg.Vector2(x, y) * self.slot_len) + pg.Vector2(0, self.slot_len + self.line_w))
 
             render_surf.blit(bg_surf, bg_surf.get_rect(topleft=topleft))
             render_surf.blit(text_surf, text_surf.get_rect(topleft=topleft + pg.Vector2(2)))
