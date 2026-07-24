@@ -19,15 +19,14 @@ class UI:
 
         self.mini_map = MiniMap(self, cam, proc_gen, player, keyboard, chunk_renderer, weather.sky.sky_rgb)
 
-        self.info_ui = InfoUI(self, self.mini_map, player, keyboard, weather, assets.fonts['default'], clock, village)
+        #self.info_ui = InfoUI(self, self.mini_map, player, keyboard, weather, assets.fonts['default'], clock, village)
 
-        self.player_inv_ui = PlayerInventoryUI(self, player, self.mini_map, self.info_ui, assets, keyboard, mouse)
+        self.player_inv_ui = PlayerInventoryUI(self, player, self.mini_map, assets, keyboard, mouse)
 
         self.reachable_tile_surf = pg.Surface((TILE_SIZE, TILE_SIZE))
         self.reachable_tile_surf.set_alpha(64)
 
-        rect_h = self.mini_map.outline_rect2.height + self.info_ui.rect.height + self.player_inv_ui.rect.height
-        self.rect = pg.Rect((0,0), (self.mini_map.outline_rect2.width, rect_h))
+        self.rect = pg.Rect((0,0), (self.mini_map.outline_rect2.width, self.mini_map.outline_rect2.height + self.player_inv_ui.rect.height))
        
     def highlight_tile_at_mouse(self, screen):
         x, y = self.mouse.tile_at
@@ -66,15 +65,12 @@ class UI:
 
     def update_rect_height(self):
         mini_map_h = self.mini_map.outline_rect2.height if self.mini_map.show else 0
-        info_ui_h = self.info_ui.rect.height if self.info_ui.show else 0
         player_inv_ui_h = self.player_inv_ui.rect.height if self.player_inv_ui.show else 0
-        if (rect_h := mini_map_h + info_ui_h + player_inv_ui_h) > 0:
-            return rect_h
-        return None
+        return mini_map_h + player_inv_ui_h
             
     def update(self, screen):
         self.mini_map.update(screen)
-        self.info_ui.update(screen)
+        #self.info_ui.update(screen)
         self.player_inv_ui.update(screen)
         if not self.rect.collidepoint(self.mouse.screen_pos):
             self.highlight_tile_at_mouse(screen)

@@ -4,67 +4,62 @@ from settings import KEY_BINDINGS, TILE_SIZE
 from os.path import join
 
 class PlayerInventoryUI:
-    def __init__(self, ui, player, mini_map, info_ui, assets, keyboard, mouse):
+    def __init__(self, ui, player, mini_map, assets, keyboard, mouse):
         self.ui = ui
         self.player = player
         self.mini_map = mini_map
-        self.info_ui = info_ui
         self.assets = assets
         self.keyboard = keyboard
         self.mouse = mouse
-
+        
+        self.line_w = 1
+        self.line_color = self.mini_map.outline_color2
         self.num_cols = 8
         self.num_rows = player.max_slot_storage // self.num_cols
-        self.slot_len = info_ui.surf.width // self.num_cols
-        self.outline_w = 1
-
+        self.slot_len = self.mini_map.outline_rect2.width // self.num_cols
+    
         self.num_slots_filled = len(player.inv)
         self.item_names = list(player.inv)
         self.item_surfs = {}
         self.show = True
         self.open = False # show only the first row or the full inventory
         
-        self.line_color = self.mini_map.outline_color2
-        self.surf_color = self.mini_map.outline_color1
+        self.surf_color = 'black'
+        self.alpha = 228
         self.surf_open, self.surf_closed = self.get_surfs()
-        self.rect_open = self.surf_open.get_rect()
-        self.rect_closed = self.surf_closed.get_rect()
+
+        self.rect_open = self.surf_open.get_rect(topleft=self.mini_map.outline_rect2.bottomleft)
+        self.rect_closed = self.surf_closed.get_rect(topleft=self.rect_open.topleft)
         self.rect = self.rect_closed
         self.old_topleft = None
         self.topleft = self.update_topleft()
 
         self.slot_overlap_idx = None
         self.slot_highlight_surf = pg.Surface((self.slot_len, self.slot_len))
-        self.slot_highlight_surf.fill(pg.Color(self.surf_color)[:3] + pg.Vector3(10,10,10))
-        self.slot_highlight_surf.set_alpha(self.surf_open.get_alpha())
+        self.slot_highlight_surf.fill(pg.Color(self.surf_color)[:3] + pg.Vector3(32))
+        self.slot_highlight_surf.set_alpha(self.alpha)
 
     def update_topleft(self):
-        if self.info_ui.show:
-            topleft = self.info_ui.rect.bottomleft
-        elif self.mini_map.show:
-            topleft = self.mini_map.rect.bottomleft
-        else:
-            topleft = pg.Vector2()
-
-        if topleft != self.old_topleft:
+        if (topleft := self.mini_map.outline_rect2.bottomleft if self.mini_map.show else pg.Vector2()) != self.old_topleft:
             self.old_topleft = topleft
             self.rect_open.topleft = topleft
             self.rect_closed.topleft = topleft
         return topleft
 
     def get_surfs(self):
-        outline_offset = pg.Vector2(self.outline_w, self.outline_w)
-        open_surf = pg.Surface((pg.Vector2(self.num_cols, self.num_rows) * self.slot_len) + outline_offset, pg.SRCALPHA)
+        open_surf = pg.Surface((pg.Vector2(self.num_cols, self.num_rows) * self.slot_len), pg.SRCALPHA)
         open_surf.fill(self.surf_color)
-        open_surf.set_alpha(235)
+        open_surf.set_alpha(self.alpha)
 
-        for x in range(self.num_cols + 1):
-            for y in range(self.num_rows + 1):
-                vert_line_x, horiz_line_y = x * self.slot_len, y * self.slot_len
-                pg.draw.line(open_surf, self.line_color, (vert_line_x, 0), (vert_line_x, open_surf.height), self.outline_w)
-                pg.draw.line(open_surf, self.line_color, (0, horiz_line_y), (open_surf.width, horiz_line_y), self.outline_w)
-       
-        return open_surf, open_surf.subsurface((0,0), (open_surf.width, self.slot_len + outline_offset.y))
+        for x in range(1, self.num_cols):
+            vert_line_x = x * self.slot_len
+            pg.draw.line(open_surf, self.line_color, (vert_line_x, 0), (vert_line_x, open_surf.height), self.line_w)
+        
+        for y in range(1, self.num_rows):
+            horiz_line_y = y * self.slot_len
+            pg.draw.line(open_surf, self.line_color, (0, horiz_line_y), (open_surf.width, horiz_line_y), self.line_w)
+        
+        return open_surf, open_surf.subsurface((0,0), (open_surf.width, self.slot_len + self.line_w))
 
     def render(self, screen):
         if self.open:
@@ -73,7 +68,7 @@ class PlayerInventoryUI:
         else:
             surf = self.surf_closed.copy()
             rect = self.rect_closed
-        
+
         half_slot_len = pg.Vector2(self.slot_len, self.slot_len) / 2
         mouse_overlap = self.slot_overlap_idx is not None
         for x in range(self.num_cols):

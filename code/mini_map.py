@@ -47,7 +47,7 @@ class MiniMap:
             self.outline_rect.topleft - pg.Vector2(self.outline_w, self.outline_w), 
             self.outline_rect.size + (pg.Vector2(self.outline_w, self.outline_w) * 2)
         )
-        self.outline_color1, self.outline_color2 = 'mediumpurple4', 'indigo'
+        self.outline_color1, self.outline_color2 = 'purple4', 'indigo'
         self.num_outlines = 2
 
         self.prev_cam_offset = cam.offset.copy()
@@ -165,7 +165,7 @@ class MiniMap:
         if name in self.non_tile_rgbs:
             return self.non_tile_rgbs[name]
         
-        return (255, 0, 0)
+        return (0, 255, 0)
 
     def update(self, screen):
         if self.keyboard.pressed_keys[KEY_BINDINGS['mini map view']]:
