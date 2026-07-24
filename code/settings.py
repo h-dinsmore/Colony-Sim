@@ -235,14 +235,26 @@ ELEVATIONS = {'foothills', 'hills', 'mountains', 'mountain peak', 'volcano', 'sh
 
 TREES = {'oak', 'evergreen', 'bare', 'stump', 'fir 0', 'fir 1', 'fruit', 'maple 0', 'maple 1', 'poplar', 'willow', 'palm 0', 'palm 1'}
 
-SURFACE_TERRAIN = {'small rock', 'large rock', 'small mushroom', 'large mushroom', 'lilypad', 'cactus', 'snow'}
-for b in BIOMES:
-    SURFACE_TERRAIN.add(f'{b} plant')
-    SURFACE_TERRAIN.add(f'{b} grass')
+SURFACE_TERRAIN = {
+    'small rock': {'hardness': SOLID_TILES['stone']['hardness'] // 2}, 
+    'large rock': {'hardness': SOLID_TILES['stone']['hardness'] * 2}, 
+    'small mushroom': {'hardness': 50}, 
+    'large mushroom': {'hardness': 100}, 
+    'lilypad': {'hardness': 10}, 
+    'cactus': {'hardness': 150}, 
+    'snow': {'hardness': 100}
+}
+for b in BIOMES: 
+    SURFACE_TERRAIN[f'{b} plant'] = {'hardness': 10}
+    SURFACE_TERRAIN[f'{b} grass'] = {'hardness': 10}
 
-MISC_TERRAIN = {'large rock', 'small rock', 'snow'}
-
+REMOVABLE_TILES = SOLID_TILES.keys() | TREES | SURFACE_TERRAIN.keys()
+TILE_HARDNESS_VALUES = {k: SOLID_TILES[k]['hardness'] for k in SOLID_TILES} | {k: SURFACE_TERRAIN[k]['hardness'] for k in SURFACE_TERRAIN} \
+    | {k: 300 for k in TREES}
+print(TILE_HARDNESS_VALUES)
 LIQUIDS = {'water', 'lava', 'honey'}
+
+ALL_TILES = REMOVABLE_TILES | ELEVATIONS | LIQUIDS
 
 MONTHS_DAYS = {
     'January': 31, 'February': 28, 'March': 31, 'April': 30, 'May': 31, 'June': 30, 'July': 31, 'August': 31, 

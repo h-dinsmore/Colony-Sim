@@ -1,7 +1,7 @@
 import pygame as pg
 from random import randint, choice
 
-from settings import MONTHS_DAYS, TILE_SIZE
+from settings import MONTHS_DAYS, TILE_SIZE, TILE_REACH_RADIUS, TREES, FPS
 
 class Villager(pg.sprite.Sprite):
     def __init__(self, img_folder, xyz, spr_groups, screen, proc_gen, chunk_renderer, village):
@@ -56,14 +56,38 @@ class Villager(pg.sprite.Sprite):
         z_map = self.proc_gen.z_map
         self.visible = abs(px - x) < RES[0] // 2 and abs(py - y) < RES[1] // 2 and z_map[x, y] <= z_map[px, py]
 
+    def get_fall_damage(self, z):
+        self.health = max(0, (self.z - z) * 2)
+        if self.health <= 0:
+            self.living = False
+            self.kill()
+
+    def check_reachable_tile(self, x, y, z, air_tile):
+        return (not air_tile) and abs(self.x - x) <= TILE_REACH_RADIUS and abs(self.y - y) <= TILE_REACH_RADIUS and \
+            ((abs(self.z - z) <= TILE_REACH_RADIUS) if self.chunk_renderer.view != 'z slice' else z == self.proc_gen.z_map[x, y])
+
+    def remove_tile(self, x, y, z):
+        hardness = max(0, self.proc_gen.tile_hardness_map[x, y, z] - ((self.strength * self.get_tool_strength()) / FPS))
+        self.proc_gen.tile_hardness_map[x, y, z] = hardness 
+        new_z = z
+        if hardness == 0:
+            self.add_item_to_inv(self.proc_gen.id_tiles[self.proc_gen.tile_map[x, y, z]])
+            self.proc_gen.update_maps_after_removed_tile(x, y, z) # update the tile map before the chunk renderer to show the tile below
+            new_z = int(self.proc_gen.z_map[x, y])
+            if (x, y) == (self.x, self.y):
+                self.z = new_z
+                self.living = new_z > -1
+        
+        self.chunk_renderer.update_tile_in_chunk(x, y, z, new_z, hardness)
+
     def get_tool_strength(self):
         if self.item_holding is None:
             return 1
         else:
             pass
 
-    def add_item_to_inv(self, tile_id):
-        if (item_name := self.proc_gen.id_tiles[tile_id]) not in self.inv and len(self.inv) < self.num_inv_slots:
+    def add_item_to_inv(self, tile_name):
+        if (item_name := tile_name if tile_name not in TREES else 'wood') not in self.inv and len(self.inv) < self.num_inv_slots:
             self.inv[item_name] = {'amount': 1, 'idx': len(self.inv)}
             if self in self.village.player_spr:
                 self.village.ui.player_inv_ui.num_slots_filled += 1

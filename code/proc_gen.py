@@ -17,11 +17,11 @@ class ProcGen:
             self.id_biomes[i] = k
         
         self.tile_ids, self.id_tiles = {}, {}
-        # storing these first to use the ids to look up hardness values using the tile_hardness_map indices
-        for i, k in enumerate(('air', *SOLID_TILES.keys())):
+        # storing these first to use the ids to look up tile hardness values using the tile_hardness_map indices
+        for i, k in enumerate(('air', *REMOVABLE_TILES)):
             self.tile_ids[k], self.id_tiles[i] = i, k 
         
-        for i, k in enumerate(ELEVATIONS | TREES | LIQUIDS | SURFACE_TERRAIN, start=len(self.tile_ids) + 1):
+        for i, k in enumerate(ALL_TILES - REMOVABLE_TILES, start=len(self.tile_ids) + 1):
             self.tile_ids[k] = i + 1
             self.id_tiles[i + 1] = k
 
@@ -33,10 +33,8 @@ class ProcGen:
         self.z_map = None # different from biome_max_z bc it stores the highest zs with a non-air tile
         self.z_dif_map = {}
 
-        self.solid_tile_map = None # just storing to ignore the surface tile ids in tile_map when indexing tile_hardess_by_id
         self.tile_map = self.get_tile_map()
-        tile_hardness_by_id = np.array([0] + [SOLID_TILES[tile]['hardness'] for tile in SOLID_TILES], dtype=np.uint16) # the index of each element matches the id of the tile it represents
-        self.tile_hardness_map = tile_hardness_by_id[self.solid_tile_map]
+        self.tile_hardness_map = self.get_tile_hardness_map()
        
     def get_noise_arr(self, map_name):
         arr = np.empty(MAP_TILE_SIZE[:2], dtype=self.noise_arr_dtype)
@@ -94,14 +92,8 @@ class ProcGen:
                         repeaty=MAP_TILE_SIZE[1],
                     )
         noise_map = self.normalize_arr(noise_map)
-
         self.place_solid_tiles(tile_map, noise_map)
-        self.solid_tile_map = tile_map.copy()
-
-        self.z_map = np.max(
-            np.where(tile_map != self.tile_ids['air'], np.arange(MAP_TILE_SIZE[2]), -1), axis=2
-        ).astype(np.int8)
-
+        self.z_map = np.max(np.where(tile_map != self.tile_ids['air'], np.arange(MAP_TILE_SIZE[2]), -1), axis=2).astype(np.int8)
         self.place_surface_terrain(tile_map)
         return tile_map
     
@@ -143,6 +135,10 @@ class ProcGen:
             if noise_range[0] > noise_min and noise_range[1] < noise_max:
                 return self.tile_ids[f'{tree} {choice((0, 1))}'] if tree in {'maple', 'fir'} else self.tile_ids[tree]
 
+    def get_tile_hardness_map(self):
+        tile_hardness_by_id = np.array([self.tile_ids['air']] + [TILE_HARDNESS_VALUES[tile] for tile in REMOVABLE_TILES], dtype=np.uint16) # the index of each element matches the id of the tile it represents
+        return tile_hardness_by_id[self.tile_map] # TODO: add a mask for liquids when they get added
+
     def update_z_dif_map(self, z): # TODO: add a condition checking if any tiles were changed from the cached map when mining and tree cutting is added 
         z_map = np.where(self.z_map != -1, self.z_map, z)
         z_difs = (z_map - z).astype(np.int8)
@@ -155,14 +151,10 @@ class ProcGen:
 
         self.z_dif_map[z] = surface_tiles
 
-    def update_map_after_mined_tile(self, x, y, old_z):
+    def update_maps_after_removed_tile(self, x, y, old_z):
+        solid_tile = self.id_tiles[self.tile_map[x, y, old_z]] in SOLID_TILES
         self.tile_map[x, y, old_z] = self.tile_ids['air']
-        
-        new_surface_z = -1
-        for z in range(old_z - 1, -1, -1):
-            if self.tile_map[x, y, z] != self.tile_ids['air']:
-                new_surface_z = z
-                break
+        new_surface_z = self.get_new_surface_z(x, y, old_z, solid_tile)
         self.z_map[x, y] = new_surface_z
       
         if old_z in self.z_dif_map:
@@ -176,3 +168,14 @@ class ProcGen:
                             break
                 else:
                     self.z_dif_map[old_z][x, y] = self.tile_ids[self.tile_map[x, y, new_surface_z]]
+    # TODO: maybe add a new array for trees and tiles like rocks and plants so the z level doesn't change if they're removed from the tile they're on
+    def get_new_surface_z(self, x, y, old_z, solid_tile):
+        if solid_tile:
+            new_surface_z = -1
+            for z in range(old_z - 1, -1, -1):
+                if self.tile_map[x, y, z] != self.tile_ids['air']:
+                    new_surface_z = z
+                    break
+        else:
+            new_surface_z = old_z - 1
+        return new_surface_z
