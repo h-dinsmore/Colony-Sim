@@ -30,11 +30,12 @@ class ProcGen:
         self.biome_max_z = {b: np.where(self.biome_map == self.biome_ids[b], max_z_map, 0) for b in BIOMES}
         self.placed_biomes = set(b for b in BIOMES if self.biome_max_z[b] is not None)
         
-        self.z_map = None # different from biome_max_z bc it stores the highest zs with a non-air tile
-        self.z_dif_map = {}
-
         self.tile_map = self.get_tile_map()
+        self.surface_terrain_map = self.get_surface_terrain_map()
         self.tile_hardness_map = self.get_tile_hardness_map()
+
+        self.z_map = np.max(np.where(self.tile_map != self.tile_ids['air'], np.arange(MAP_TILE_SIZE[2]), -1), axis=2).astype(np.int8)
+        self.z_dif_map = {}
        
     def get_noise_arr(self, map_name):
         arr = np.empty(MAP_TILE_SIZE[:2], dtype=self.noise_arr_dtype)
@@ -91,10 +92,7 @@ class ProcGen:
                         repeatx=MAP_TILE_SIZE[0],
                         repeaty=MAP_TILE_SIZE[1],
                     )
-        noise_map = self.normalize_arr(noise_map)
-        self.place_solid_tiles(tile_map, noise_map)
-        self.z_map = np.max(np.where(tile_map != self.tile_ids['air'], np.arange(MAP_TILE_SIZE[2]), -1), axis=2).astype(np.int8)
-        self.place_surface_terrain(tile_map)
+        self.place_solid_tiles(tile_map, self.normalize_arr(noise_map)) 
         return tile_map
     
     def place_solid_tiles(self, tile_map, noise_map):
@@ -113,16 +111,15 @@ class ProcGen:
                 
                 min_z_arr = max_z_arr
 
-    def place_surface_terrain(self, tile_map):
+    def get_surface_terrain_map(self):
+        surface_terrain_map = np.zeros(MAP_TILE_SIZE[:2], dtype=np.uint8)
         for biome in self.placed_biomes:
             biome_mask = self.biome_map == self.biome_ids[biome]
-            
             for tile, (noise_min, noise_max) in BIOMES[biome]['surface terrain'].items():
                 if (tile_id := self.get_biome_tile_id(biome, tile, noise_min, noise_max)):
                     x, y = np.where(biome_mask & (self.geo_maps['veg'] > noise_min) & (self.geo_maps['veg'] < noise_max))
-                    tile_map[x, y, self.z_map[x, y]] = tile_id
-                else:
-                    continue # keep the surface tile
+                    surface_terrain_map[x, y] = tile_id
+        return surface_terrain_map
     
     def get_biome_tile_id(self, biome, tile, noise_min, noise_max):
         if tile in {'snow', 'small rock', 'large rock', 'small mushroom', 'large mushroom', 'cactus'}:
@@ -152,9 +149,11 @@ class ProcGen:
         self.z_dif_map[z] = surface_tiles
 
     def update_maps_after_removed_tile(self, x, y, old_z):
-        solid_tile = self.id_tiles[self.tile_map[x, y, old_z]] in SOLID_TILES
+        tile_name = self.id_tiles[self.tile_map[x, y, old_z]] 
+        solid_tile = tile_name in SOLID_TILES
+        surface_terrain_tile = tile_name in SURFACE_TERRAIN.keys() | TREES # TODO: maybe merge the trees into surface terrain?
         self.tile_map[x, y, old_z] = self.tile_ids['air']
-        new_surface_z = self.get_new_surface_z(x, y, old_z, solid_tile)
+        new_surface_z = self.get_new_surface_z(x, y, old_z, solid_tile, surface_terrain_tile)
         self.z_map[x, y] = new_surface_z
       
         if old_z in self.z_dif_map:
@@ -168,8 +167,8 @@ class ProcGen:
                             break
                 else:
                     self.z_dif_map[old_z][x, y] = self.tile_ids[self.tile_map[x, y, new_surface_z]]
-    # TODO: maybe add a new array for trees and tiles like rocks and plants so the z level doesn't change if they're removed from the tile they're on
-    def get_new_surface_z(self, x, y, old_z, solid_tile):
+    
+    def get_new_surface_z(self, x, y, old_z, solid_tile, surface_terrain_tile):
         if solid_tile:
             new_surface_z = -1
             for z in range(old_z - 1, -1, -1):
@@ -178,4 +177,7 @@ class ProcGen:
                     break
         else:
             new_surface_z = old_z - 1
+            if surface_terrain_tile:
+                self.surface_terrain_map[x, y] = 0
+
         return new_surface_z

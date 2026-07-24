@@ -94,7 +94,6 @@ class ChunkRenderer:
                 z_idx = self.proc_gen.z_dif_map[self.player.z][tile_x, tile_y]
                 
         tile_name = self.proc_gen.id_tiles[self.proc_gen.tile_map[tile_x, tile_y, z_idx]]
-        
         screen_tile_size = TILE_SIZE * self.cam.zoom_scale
         tile_xy_in_chunk = (pg.Vector2(tile_x, tile_y) * TILE_SIZE) - pg.Vector2(chunk_px_x, chunk_px_y)
         solid_tile = hardness > 0 and tile_name in SOLID_TILES
@@ -137,11 +136,16 @@ class ChunkRenderer:
             tile_id = self.proc_gen.tile_map[x, y, self.player.z]
         else:
             tile_z = int(self.proc_gen.z_map[x, y])
-            if self.view == 'surface' or self.player.z == tile_z:
-                tile_id = self.proc_gen.tile_map[x, y, tile_z]
+            player_on_surface = self.player.z == tile_z
+            surface_terrain_id = self.proc_gen.surface_terrain_map[x, y]
+            if self.view == 'surface' or player_on_surface:
+                tile_id = surface_terrain_id if surface_terrain_id > 0 else self.proc_gen.tile_map[x, y, tile_z] 
             else:
-                tile_id = self.proc_gen.z_dif_map[self.player.z][x, y]
-        
+                solid_tile_id = self.proc_gen.z_dif_map[self.player.z][x, y]
+                if player_on_surface:
+                    tile_id = surface_terrain_id if surface_terrain_id > 0 else solid_tile_id
+                else:
+                    tile_id = solid_tile_id
         return tile_id
 
     def get_cache(self):

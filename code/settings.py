@@ -251,7 +251,7 @@ for b in BIOMES:
 REMOVABLE_TILES = SOLID_TILES.keys() | TREES | SURFACE_TERRAIN.keys()
 TILE_HARDNESS_VALUES = {k: SOLID_TILES[k]['hardness'] for k in SOLID_TILES} | {k: SURFACE_TERRAIN[k]['hardness'] for k in SURFACE_TERRAIN} \
     | {k: 300 for k in TREES}
-print(TILE_HARDNESS_VALUES)
+
 LIQUIDS = {'water', 'lava', 'honey'}
 
 ALL_TILES = REMOVABLE_TILES | ELEVATIONS | LIQUIDS
