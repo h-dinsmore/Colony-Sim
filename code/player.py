@@ -44,8 +44,7 @@ class Player(Villager):
         if pg.mouse.get_pressed()[0]:
             x, y = self.mouse.tile_at
             z = self.z if self.chunk_renderer.view == 'z slice' else int(self.proc_gen.z_map[x, y])
-            tile_name = self.proc_gen.id_tiles[self.proc_gen.tile_map[x, y, z]]
-            if self.check_reachable_tile(x, y, z, tile_name == 'air'):
+            if self.check_reachable_tile(x, y, z):
                 self.remove_tile(x, y, z)
 
     def update(self):

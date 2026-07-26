@@ -142,7 +142,7 @@ class MiniMap:
                 tile_x, tile_y = chunk_x + x, chunk_y + y
                 tile_z = self.player.z if self.chunk_renderer.view == 'z slice' else self.proc_gen.z_map[tile_x, tile_y]
                 if self.seen_tiles[tile_x, tile_y, tile_z]:
-                    if color := self.get_tile_color(self.chunk_renderer.get_tile_id(tile_x, tile_y)):
+                    if color := self.get_tile_color(self.chunk_renderer.get_tile_name(tile_x, tile_y)):
                         tile.fill(color)
                         img.blit(tile, (x * self.tile_size, y * self.tile_size))
         return img
@@ -151,10 +151,13 @@ class MiniMap:
         img = self.chunk_img_cache[self.chunk_renderer.view][(chunk_x, chunk_y, chunk_z)]
         tile = pg.Surface((self.tile_size, self.tile_size))
         for col, row in np.argwhere(prev_seen_tiles != cur_seen_tiles): 
-            if color := self.get_tile_color(self.chunk_renderer.get_tile_id(chunk_x + col, chunk_y + row)):
+            if color := self.get_tile_color(self.chunk_renderer.get_tile_name(chunk_x + col, chunk_y + row)):
                 tile.fill(color) 
                 img.blit(tile, (col * self.tile_size, row * self.tile_size))
         return img
+
+    def update_tile_in_chunk(self):
+        pass
  
     def get_tile_color(self, name):
         if name in SOLID_TILES:

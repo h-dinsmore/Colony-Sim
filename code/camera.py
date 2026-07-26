@@ -12,12 +12,16 @@ class Camera:
         self.half_visible_world_px = pg.Vector2(RES) / 2
         self.max_centerx, self.max_centery = pg.Vector2(MAP_PX_SIZE[:2]) - self.half_visible_world_px
         
-        self.zoom_scale, self.max_zoom_scale, self.min_zoom_scale = 1.0, 1.25, 0.75
+        self.zoom_scale = 1.0
+        self.max_zoom_scale = 1.25
+        self.min_zoom_scale = 0.75
+        self.screen_tile_size = TILE_SIZE
 
     def update_zoom(self, dir):
         self.zoom_scale = max(self.min_zoom_scale, min(self.zoom_scale + (dir.y * 0.01), self.max_zoom_scale)) 
         self.half_visible_world_px = (pg.Vector2(RES) / 2) / self.zoom_scale
         self.max_centerx, self.max_centery = (pg.Vector2(MAP_PX_SIZE[:2]) - self.half_visible_world_px) 
+        self.screen_tile_size = TILE_SIZE * self.zoom_scale
 
     def update(self, target_xy):
         if (target_dist := target_xy - self.center_xy) != 0.0:
@@ -35,3 +39,4 @@ class Camera:
 
         if self.keyboard.pressed_keys[KEY_BINDINGS['reset zoom']]:
             self.zoom_scale = 1.0
+            self.screen_tile_size = TILE_SIZE

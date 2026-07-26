@@ -17,7 +17,6 @@ KEY_BINDINGS = {
     'info ui view': pg.K_TAB,
     'player inv view': pg.K_i,
     'open/close player inv': pg.K_j
-
 }
 
 TILE_SIZE = 16
@@ -202,7 +201,7 @@ SOLID_TILES = {
 
     'diamond': {'hardness': 1500, 'minimap rgb': ()},
 
-    'dirt': {'hardness': 100, 'minimap rgb': (93, 64, 55)},
+    'dirt': {'hardness': 200, 'minimap rgb': (93, 64, 55)},
 
     'emerald': {'hardness': 500, 'minimap rgb': ()},
 
@@ -218,7 +217,7 @@ SOLID_TILES = {
 
     'ruby': {'hardness': 500, 'minimap rgb': ()},
 
-    'sand': {'hardness': 100, 'minimap rgb': (255, 224, 178)},
+    'sand': {'hardness': 200, 'minimap rgb': (255, 224, 178)},
 
     'sandstone': {'hardness': 500, 'minimap rgb': (255, 112, 67)},
 
@@ -238,23 +237,30 @@ TREES = {'oak', 'evergreen', 'bare', 'stump', 'fir 0', 'fir 1', 'fruit', 'maple 
 SURFACE_TERRAIN = {
     'small rock': {'hardness': SOLID_TILES['stone']['hardness'] // 2}, 
     'large rock': {'hardness': SOLID_TILES['stone']['hardness'] * 2}, 
-    'small mushroom': {'hardness': 50}, 
-    'large mushroom': {'hardness': 100}, 
-    'lilypad': {'hardness': 10}, 
+    'small mushroom': {'hardness': 100}, 
+    'large mushroom': {'hardness': 150}, 
+    'lilypad': {'hardness': 0}, 
     'cactus': {'hardness': 150}, 
     'snow': {'hardness': 100}
 }
 for b in BIOMES: 
-    SURFACE_TERRAIN[f'{b} plant'] = {'hardness': 10}
-    SURFACE_TERRAIN[f'{b} grass'] = {'hardness': 10}
+    SURFACE_TERRAIN[f'{b} plant'] = {'hardness': 0}
+    SURFACE_TERRAIN[f'{b} grass'] = {'hardness': 0}
 
-REMOVABLE_TILES = SOLID_TILES.keys() | TREES | SURFACE_TERRAIN.keys()
-TILE_HARDNESS_VALUES = {k: SOLID_TILES[k]['hardness'] for k in SOLID_TILES} | {k: SURFACE_TERRAIN[k]['hardness'] for k in SURFACE_TERRAIN} \
-    | {k: 300 for k in TREES}
+for k in TREES:
+    SURFACE_TERRAIN[k] = {'hardness': 300}
+
+REMOVABLE_TILES = list(SOLID_TILES) # not using a set to preserve their tile id order 
+for k in TREES: 
+    REMOVABLE_TILES.append(k)
+for k in SURFACE_TERRAIN.keys():
+    REMOVABLE_TILES.append(k)
 
 LIQUIDS = {'water', 'lava', 'honey'}
 
-ALL_TILES = REMOVABLE_TILES | ELEVATIONS | LIQUIDS
+ALL_TILES = set(REMOVABLE_TILES) | ELEVATIONS | LIQUIDS
+
+TILE_HARDNESS_VALUES = {k: SOLID_TILES[k]['hardness'] for k in SOLID_TILES} | {k: SURFACE_TERRAIN[k]['hardness'] for k in SURFACE_TERRAIN}
 
 MONTHS_DAYS = {
     'January': 31, 'February': 28, 'March': 31, 'April': 30, 'May': 31, 'June': 30, 'July': 31, 'August': 31, 

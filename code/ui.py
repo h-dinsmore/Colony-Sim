@@ -54,7 +54,7 @@ class UI:
             self.old_zoom_scale = self.cam.zoom_scale
             self.reachable_tile_surf = pg.transform.scale(self.reachable_tile_surf, pg.Vector2(TILE_SIZE, TILE_SIZE) * self.cam.zoom_scale)
 
-        self.reachable_tile_surf.fill('green' if self.player.check_reachable_tile(x, y, z, air_tile) else 'red')
+        self.reachable_tile_surf.fill('green' if self.player.check_reachable_tile(x, y, z) else 'red')
         screen.blit(self.reachable_tile_surf, screen_xy)
 
     def spawn_item_sprite(self, tile_id, xy):

@@ -1,7 +1,7 @@
 import pygame as pg
 from random import randint, choice
 
-from settings import MONTHS_DAYS, TILE_SIZE, TILE_REACH_RADIUS, TREES, FPS
+from settings import MONTHS_DAYS, TILE_SIZE, TILE_REACH_RADIUS, TREES, FPS, SURFACE_TERRAIN
 
 class Villager(pg.sprite.Sprite):
     def __init__(self, img_folder, xyz, spr_groups, screen, proc_gen, chunk_renderer, village):
@@ -62,40 +62,47 @@ class Villager(pg.sprite.Sprite):
             self.living = False
             self.kill()
 
-    def check_reachable_tile(self, x, y, z, air_tile):
-        return (not air_tile) and abs(self.x - x) <= TILE_REACH_RADIUS and abs(self.y - y) <= TILE_REACH_RADIUS and \
+    def check_reachable_tile(self, x, y, z):
+        return (not self.proc_gen.id_tiles[self.proc_gen.tile_map[x, y, z]] == 'air') and \
+            abs(self.x - x) <= TILE_REACH_RADIUS and abs(self.y - y) <= TILE_REACH_RADIUS and \
             ((abs(self.z - z) <= TILE_REACH_RADIUS) if self.chunk_renderer.view != 'z slice' else z == self.proc_gen.z_map[x, y])
 
     def remove_tile(self, x, y, z):
-        hardness = max(0, self.proc_gen.tile_hardness_map[x, y, z] - ((self.strength * self.get_tool_strength()) / FPS))
-        self.proc_gen.tile_hardness_map[x, y, z] = hardness 
-        new_z = z
-        if hardness == 0:
-            self.add_item_to_inv(self.proc_gen.id_tiles[self.proc_gen.tile_map[x, y, z]])
-            self.proc_gen.update_maps_after_removed_tile(x, y, z) # update the tile map before the chunk renderer to show the tile below
-            new_z = int(self.proc_gen.z_map[x, y])
-            if (x, y) == (self.x, self.y):
-                self.z = new_z
-                self.living = new_z > -1
+        name = self.chunk_renderer.get_tile_name(x, y)
+        surface_terrain = name in SURFACE_TERRAIN
+        hardness_map = self.proc_gen.surface_terrain_hardness_map if surface_terrain else self.proc_gen.tile_hardness_map
+        idx = (x, y) if surface_terrain else (x, y, z)
+
+        if hardness_map[idx] > 0:
+            hardness_map[idx] -= min(hardness_map[idx], int((self.strength * self.get_tool_strength()) / FPS))
+        if hardness_map[idx] == 0:
+            self.add_item_to_inv(name)
+            old_surface_z = int(self.proc_gen.z_map[x, y])
+            self.proc_gen.update_maps_after_removed_tile(x, y, z, name) # update the tile map before the chunk renderer to show the tile below
+            if (x, y) == (self.x, self.y) and (new_surface_z := int(self.proc_gen.z_map[x, y])) < old_surface_z:
+                self.z = new_surface_z
+                self.living = new_surface_z > -1
         
-        self.chunk_renderer.update_tile_in_chunk(x, y, z, new_z, hardness)
+        self.chunk_renderer.update_tile_in_chunk(x, y, hardness_map[idx], name)
 
     def get_tool_strength(self):
         if self.item_holding is None:
-            return 1
+            return 10
         else:
             pass
 
     def add_item_to_inv(self, tile_name):
-        if (item_name := tile_name if tile_name not in TREES else 'wood') not in self.inv and len(self.inv) < self.num_inv_slots:
-            self.inv[item_name] = {'amount': 1, 'idx': len(self.inv)}
+        item_name = tile_name if tile_name not in TREES else 'wood'
+        item_amount = 1 if item_name != 'wood' else 4
+        if item_name not in self.inv and len(self.inv) < self.num_inv_slots:
+            self.inv[item_name] = {'amount': item_amount, 'idx': len(self.inv)}
             if self in self.village.player_spr:
                 self.village.ui.player_inv_ui.num_slots_filled += 1
                 self.village.ui.player_inv_ui.item_names.append(item_name)
         else:
-            if (item_num := min(self.max_slot_storage, self.inv[item_name]['amount'] + 1)) <= self.max_slot_storage:
-                self.inv[item_name]['amount'] = item_num
-            else: # update the dictionary to have each slot of the same item be <name> 0,1,...
+            if (item_amount := min(self.max_slot_storage, self.inv[item_name]['amount'] + item_amount)) <= self.max_slot_storage:
+                self.inv[item_name]['amount'] = item_amount
+            else: # update the dictionary to have each slot of the same item be <name> 0,1,... and check if there's any remaining wood from the slot reaching its capacity
                 pass
 
     def update(self):

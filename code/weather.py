@@ -27,7 +27,7 @@ class Weather:
             self.month = self.month_idxs[self.month_idx]
 
         self.moon_phase_idx = (self.moon_phase_idx + 1) % len(MOON_PHASES)
-        self.moon_phase = self.moon_phase_idxs[self.moon_phase_idx]
+        self.moon_phase = MOON_PHASES[self.moon_phase_idx]
 
         for spr in [s for s in self.village_sprs if s.birthday == f'{self.month} {self.day}']:
             spr.age += 1
@@ -59,7 +59,7 @@ class Sky:
 
         self.alarms = {
             'update rgb': Alarm(len=10_000, fn=self.update_rgb, auto=True, loop=True), 
-            'update tint': Alarm(len=10_000, fn=self.update_tint_img, auto=False, loop=True)
+            'update tint': Alarm(len=10_000, fn=self.update_tint_img, auto=False, loop=False)
         }
 
     def update_rgb(self):

@@ -28,7 +28,7 @@ class Assets:
             'transparent': (0,0,0,0)
         }
         
-        self.font_sizes = {'default': 16, 'inv item amounts': 14, 'inv item names': 18}
+        self.font_sizes = {'default': 16, 'inv item amounts': 20, 'inv item names': 18}
         self.font_variants = {'default': ('inv item amounts', 'inv item names')} # uses a loaded font but at a different size
         self.fonts = self.load_fonts(join('..', 'graphics', 'fonts'))
         self.font_text_cache = {k: {} for k in self.fonts}

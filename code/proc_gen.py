@@ -18,12 +18,18 @@ class ProcGen:
         
         self.tile_ids, self.id_tiles = {}, {}
         # storing these first to use the ids to look up tile hardness values using the tile_hardness_map indices
-        for i, k in enumerate(('air', *REMOVABLE_TILES)):
-            self.tile_ids[k], self.id_tiles[i] = i, k 
+        for i, k in enumerate(('air', *SOLID_TILES.keys())):
+            self.tile_ids[k] = i
+            self.id_tiles[i] = k 
         
-        for i, k in enumerate(ALL_TILES - REMOVABLE_TILES, start=len(self.tile_ids) + 1):
+        for i, k in enumerate((t for t in ALL_TILES if t not in SOLID_TILES.keys() | set(SURFACE_TERRAIN)), start=len(self.tile_ids) + 1):
             self.tile_ids[k] = i + 1
             self.id_tiles[i + 1] = k
+        # keeping this separate so surface_terrain_hardness_map doesn't have to store extra indices
+        self.surface_terrain_ids, self.id_surface_terrain = {}, {}
+        for i, k in enumerate(SURFACE_TERRAIN, start=1):
+            self.surface_terrain_ids[k] = i
+            self.id_surface_terrain[i] = k
 
         self.biome_map = self.get_biome_map()
         max_z_map = np.round(self.geo_maps['max z'] * (MAP_TILE_SIZE[2] - 1)).astype(np.uint8)
@@ -32,7 +38,7 @@ class ProcGen:
         
         self.tile_map = self.get_tile_map()
         self.surface_terrain_map = self.get_surface_terrain_map()
-        self.tile_hardness_map = self.get_tile_hardness_map()
+        self.tile_hardness_map, self.surface_terrain_hardness_map = self.get_tile_hardness_maps()
 
         self.z_map = np.max(np.where(self.tile_map != self.tile_ids['air'], np.arange(MAP_TILE_SIZE[2]), -1), axis=2).astype(np.int8)
         self.z_dif_map = {}
@@ -123,18 +129,19 @@ class ProcGen:
     
     def get_biome_tile_id(self, biome, tile, noise_min, noise_max):
         if tile in {'snow', 'small rock', 'large rock', 'small mushroom', 'large mushroom', 'cactus'}:
-            return self.tile_ids[tile] # they don't change with the biomes
+            return self.surface_terrain_ids[tile] # they don't change with the biomes
         
         if tile in {'plant', 'grass'}:
-            return self.tile_ids[f'{biome} {tile}']
+            return self.surface_terrain_ids[f'{biome} {tile}']
         
         for tree, noise_range in BIOMES[biome]['tree variants'].items():
             if noise_range[0] > noise_min and noise_range[1] < noise_max:
-                return self.tile_ids[f'{tree} {choice((0, 1))}'] if tree in {'maple', 'fir'} else self.tile_ids[tree]
+                return self.surface_terrain_ids[f'{tree} {choice((0, 1))}'] if tree in {'maple', 'fir'} else self.surface_terrain_ids[tree]
 
-    def get_tile_hardness_map(self):
-        tile_hardness_by_id = np.array([self.tile_ids['air']] + [TILE_HARDNESS_VALUES[tile] for tile in REMOVABLE_TILES], dtype=np.uint16) # the index of each element matches the id of the tile it represents
-        return tile_hardness_by_id[self.tile_map] # TODO: add a mask for liquids when they get added
+    def get_tile_hardness_maps(self):
+        solid_tiles = np.array([0] + [TILE_HARDNESS_VALUES[tile] for tile in SOLID_TILES], dtype=np.uint16) # the index of each element matches the id of the tile it represents
+        surface_terrain = np.array([0] + [TILE_HARDNESS_VALUES[tile] for tile in SURFACE_TERRAIN], dtype=np.uint16)
+        return solid_tiles[self.tile_map], surface_terrain[self.surface_terrain_map] # TODO: add a mask for liquids when they get added
 
     def update_z_dif_map(self, z): # TODO: add a condition checking if any tiles were changed from the cached map when mining and tree cutting is added 
         z_map = np.where(self.z_map != -1, self.z_map, z)
@@ -148,36 +155,34 @@ class ProcGen:
 
         self.z_dif_map[z] = surface_tiles
 
-    def update_maps_after_removed_tile(self, x, y, old_z):
-        tile_name = self.id_tiles[self.tile_map[x, y, old_z]] 
-        solid_tile = tile_name in SOLID_TILES
-        surface_terrain_tile = tile_name in SURFACE_TERRAIN.keys() | TREES # TODO: maybe merge the trees into surface terrain?
-        self.tile_map[x, y, old_z] = self.tile_ids['air']
-        new_surface_z = self.get_new_surface_z(x, y, old_z, solid_tile, surface_terrain_tile)
-        self.z_map[x, y] = new_surface_z
-      
-        if old_z in self.z_dif_map:
-            if new_surface_z == -1: # all tiles below old_z are air
-                self.z_dif_map[old_z][x, y] = self.tile_ids['air']
-            else:
-                if (z_dif := abs(old_z - new_surface_z)) != 0:
-                    for (min_dif, max_dif) in Z_DIF_ICONS:
-                        if ((z_dif >= min_dif) and (z_dif < max_dif)) if min_dif > 0 else ((z_dif <= min_dif) and (z_dif > max_dif)):
-                            self.z_dif_map[old_z][x, y] = self.tile_ids[Z_DIF_ICONS[(min_dif, max_dif)]]
-                            break
-                else:
-                    self.z_dif_map[old_z][x, y] = self.tile_ids[self.tile_map[x, y, new_surface_z]]
+    def update_maps_after_removed_tile(self, x, y, old_z, tile_name):
+        if tile_name in SOLID_TILES: # TODO: add liquids here when they become part of the map
+            self.tile_map[x, y, old_z] = self.tile_ids['air']
+            if old_z == self.z_map[x, y]:
+                new_surface_z = self.get_new_surface_z(x, y, old_z)
+                self.z_map[x, y] = new_surface_z
+                if old_z in self.z_dif_map:
+                    self.update_z_dif_map_tile(x, y, old_z, new_surface_z)
+        
+        elif tile_name in SURFACE_TERRAIN:
+            self.surface_terrain_map[x, y] = 0
     
-    def get_new_surface_z(self, x, y, old_z, solid_tile, surface_terrain_tile):
-        if solid_tile:
-            new_surface_z = -1
-            for z in range(old_z - 1, -1, -1):
-                if self.tile_map[x, y, z] != self.tile_ids['air']:
-                    new_surface_z = z
-                    break
-        else:
-            new_surface_z = old_z - 1
-            if surface_terrain_tile:
-                self.surface_terrain_map[x, y] = 0
-
+    def get_new_surface_z(self, x, y, old_z):
+        new_surface_z = -1
+        for z in range(old_z - 1, -1, -1):
+            if self.tile_map[x, y, z] != self.tile_ids['air']:
+                new_surface_z = z
+                break
         return new_surface_z
+
+    def update_z_dif_map_tile(self, x, y, old_z, new_z):
+        if new_z == -1: # all tiles below old_z are air
+            self.z_dif_map[old_z][x, y] = self.tile_ids['air']
+        else:
+            if (z_dif := abs(old_z - new_z)) != 0:
+                for (min_dif, max_dif) in Z_DIF_ICONS:
+                    if ((z_dif >= min_dif) and (z_dif < max_dif)) if min_dif > 0 else ((z_dif <= min_dif) and (z_dif > max_dif)):
+                        self.z_dif_map[old_z][x, y] = self.tile_ids[Z_DIF_ICONS[(min_dif, max_dif)]]
+                        break
+            else:
+                self.z_dif_map[old_z][x, y] = self.tile_ids[self.tile_map[x, y, new_z]]
