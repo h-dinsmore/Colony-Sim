@@ -179,7 +179,7 @@ class ProcGen:
         if new_z == -1: # all tiles below old_z are air
             self.z_dif_map[old_z][x, y] = self.tile_ids['air']
         else:
-            if (z_dif := abs(old_z - new_z)) != 0:
+            if (z_dif := new_z - old_z) != 0:
                 for (min_dif, max_dif) in Z_DIF_ICONS:
                     if ((z_dif >= min_dif) and (z_dif < max_dif)) if min_dif > 0 else ((z_dif <= min_dif) and (z_dif > max_dif)):
                         self.z_dif_map[old_z][x, y] = self.tile_ids[Z_DIF_ICONS[(min_dif, max_dif)]]

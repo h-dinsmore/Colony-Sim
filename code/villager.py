@@ -50,6 +50,8 @@ class Villager(pg.sprite.Sprite):
         self.memories = {}
         self.fears = {}
 
+        self.is_player = False
+
     def update_visibility(self, player):
         px, py = player.rect.center
         x, y = self.rect.center
@@ -68,26 +70,37 @@ class Villager(pg.sprite.Sprite):
             ((abs(self.z - z) <= TILE_REACH_RADIUS) if self.chunk_renderer.view != 'z slice' else z == self.proc_gen.z_map[x, y])
 
     def remove_tile(self, x, y, z):
-        name = self.chunk_renderer.get_tile_name(x, y)
-        surface_terrain = name in SURFACE_TERRAIN
-        hardness_map = self.proc_gen.surface_terrain_hardness_map if surface_terrain else self.proc_gen.tile_hardness_map
-        idx = (x, y) if surface_terrain else (x, y, z)
-
+        if (name := self.chunk_renderer.get_tile_name(x, y)) in SURFACE_TERRAIN:
+            hardness_map = self.proc_gen.surface_terrain_hardness_map
+            idx = (x, y) 
+        else:
+            hardness_map = self.proc_gen.tile_hardness_map
+            idx = (x, y, z)
+        
         if hardness_map[idx] > 0:
             hardness_map[idx] -= min(hardness_map[idx], int((self.strength * self.get_tool_strength()) / FPS))
         if hardness_map[idx] == 0:
             self.add_item_to_inv(name)
             old_surface_z = int(self.proc_gen.z_map[x, y])
             self.proc_gen.update_maps_after_removed_tile(x, y, z, name) # update the tile map before the chunk renderer to show the tile below
-            if (x, y) == (self.x, self.y) and (new_surface_z := int(self.proc_gen.z_map[x, y])) < old_surface_z:
-                self.z = new_surface_z
-                self.living = new_surface_z > -1
+            name = self.chunk_renderer.get_tile_name(x, y) # keep this after calling update_maps_after_removed_tile()
+            if (new_surface_z := int(self.proc_gen.z_map[x, y])) < old_surface_z:
+                if (x, y) == (self.x, self.y):
+                    self.z = new_surface_z
+                    self.living = new_surface_z > -1
+
+                if old_surface_z in self.proc_gen.z_dif_map:
+                    self.proc_gen.update_z_dif_map_tile(x, y, old_surface_z, new_surface_z)
+
+            if self.is_player:
+                self.tile_remove_check = False
+                self.alarms['update tile remove check'].start()
         
         self.chunk_renderer.update_tile_in_chunk(x, y, hardness_map[idx], name)
 
     def get_tool_strength(self):
         if self.item_holding is None:
-            return 10
+            return 1
         else:
             pass
 
@@ -96,7 +109,7 @@ class Villager(pg.sprite.Sprite):
         item_amount = 1 if item_name != 'wood' else 4
         if item_name not in self.inv and len(self.inv) < self.num_inv_slots:
             self.inv[item_name] = {'amount': item_amount, 'idx': len(self.inv)}
-            if self in self.village.player_spr:
+            if self.is_player:
                 self.village.ui.player_inv_ui.num_slots_filled += 1
                 self.village.ui.player_inv_ui.item_names.append(item_name)
         else:

@@ -172,6 +172,7 @@ class MiniMap:
         if self.keyboard.pressed_keys[KEY_BINDINGS['mini map view']]:
             self.show = not self.show
             self.ui.rect.height = self.ui.update_rect_height()
+            self.ui.player_inv_ui.update_topleft()
 
         if self.show:
             self.render_tiles(screen)

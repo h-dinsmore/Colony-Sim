@@ -44,7 +44,6 @@ class PlayerInventoryUI:
             self.old_topleft = topleft
             self.rect_open.topleft = topleft
             self.rect_closed.topleft = topleft
-        return topleft
 
     def get_surfs(self):
         open_surf = pg.Surface((pg.Vector2(self.num_cols, self.num_rows) * self.slot_len), pg.SRCALPHA)

@@ -3,6 +3,7 @@ import numpy as np
 
 from villager import Villager
 from settings import KEY_BINDINGS, MAP_TILE_SIZE, TILE_SIZE, TILE_REACH_RADIUS
+from alarm import Alarm
 
 class Player(Villager):
     def __init__(self, img_folder, xyz, spr_groups, screen, keyboard, mouse, proc_gen, chunk_renderer, village):
@@ -10,6 +11,11 @@ class Player(Villager):
         self.keyboard = keyboard
         self.mouse = mouse
         self.player_spr, self.village_sprs = spr_groups
+
+        self.is_player = True
+
+        self.alarms = {'update tile remove check': Alarm(1000, self.update_tile_remove_check)} # pause for a second to avoid accidentally mining more tiles after
+        self.tile_remove_check = True
 
     def move(self):
         old_x, old_y = self.x, self.y
@@ -41,12 +47,15 @@ class Player(Villager):
                     self.living = z > -1
 
     def check_removing_tile(self):
-        if pg.mouse.get_pressed()[0]:
+        if self.tile_remove_check and pg.mouse.get_pressed()[0]:
             x, y = self.mouse.tile_at
             z = self.z if self.chunk_renderer.view == 'z slice' else int(self.proc_gen.z_map[x, y])
             if self.check_reachable_tile(x, y, z):
                 self.remove_tile(x, y, z)
 
+    def update_tile_remove_check(self):
+        self.tile_remove_check = True
+    
     def update(self):
         super().update()
         self.move()
