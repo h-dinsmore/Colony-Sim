@@ -16,6 +16,7 @@ class Villager(pg.sprite.Sprite):
         self.proc_gen = proc_gen
         self.chunk_renderer = chunk_renderer
         self.village = village
+        self.ui = None # not initialized yet
         
         self.item_holding = None
         self.facing_dir = 'left'
@@ -83,7 +84,9 @@ class Villager(pg.sprite.Sprite):
             self.add_item_to_inv(name)
             old_surface_z = int(self.proc_gen.z_map[x, y])
             self.proc_gen.update_maps_after_removed_tile(x, y, z, name) # update the tile map before the chunk renderer to show the tile below
-            name = self.chunk_renderer.get_tile_name(x, y) # keep this after calling update_maps_after_removed_tile()
+            name = self.chunk_renderer.get_tile_name(x, y)
+            self.ui.mini_map.update_tile_in_chunk(x, y, name) # only updating after a removed tile bc it doesn't render alphas like the chunk renderer
+            
             if (new_surface_z := int(self.proc_gen.z_map[x, y])) < old_surface_z:
                 if (x, y) == (self.x, self.y):
                     self.z = new_surface_z
@@ -110,8 +113,8 @@ class Villager(pg.sprite.Sprite):
         if item_name not in self.inv and len(self.inv) < self.num_inv_slots:
             self.inv[item_name] = {'amount': item_amount, 'idx': len(self.inv)}
             if self.is_player:
-                self.village.ui.player_inv_ui.num_slots_filled += 1
-                self.village.ui.player_inv_ui.item_names.append(item_name)
+                self.ui.player_inv_ui.num_slots_filled += 1
+                self.ui.player_inv_ui.item_names.append(item_name)
         else:
             if (item_amount := min(self.max_slot_storage, self.inv[item_name]['amount'] + item_amount)) <= self.max_slot_storage:
                 self.inv[item_name]['amount'] = item_amount

@@ -13,7 +13,6 @@ class Village:
         self.keyboard = keyboard
         self.mouse = mouse
         self.screen = screen
-        self.ui = None # not initialized yet
         
         self.num_pop, self.num_max_pop = 3, 128
         self.spawn_z = None

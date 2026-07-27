@@ -32,6 +32,8 @@ class MiniMap:
         self.max_start_tile_x = MAP_TILE_SIZE[0] - self.tiles_across
         self.max_start_tile_y = MAP_TILE_SIZE[1] - self.tiles_across
 
+        self.chunk_img = pg.Surface((self.chunk_px_size, self.chunk_px_size))
+        self.chunk_tile = pg.Surface((self.tile_size, self.tile_size))
         self.chunk_img_cache = {k: {} for k in self.chunk_renderer.view_types}
         self.chunk_tiles_seen = {k: {} for k in self.chunk_renderer.view_types} 
 
@@ -57,10 +59,9 @@ class MiniMap:
 
     def render_tiles(self, screen): 
         if self.check_display_update():
-            px, py = pg.Vector2(self.player.rect.center) / TILE_SIZE
-            tile_start_x = max(0, min(int(px) - (self.tiles_across // 2), self.max_start_tile_x))
-            tile_start_y = max(0, min(int(py) - (self.tiles_across // 2), self.max_start_tile_y))
-
+            player_tile_x, player_tile_y = pg.Vector2(self.player.rect.center) / TILE_SIZE
+            tile_start_x = max(0, min(int(player_tile_x) - (self.tiles_across // 2), self.max_start_tile_x))
+            tile_start_y = max(0, min(int(player_tile_y) - (self.tiles_across // 2), self.max_start_tile_y))
             z_slice_view = self.chunk_renderer.view == 'z slice'
 
             for x in range(self.chunks_across):
@@ -71,24 +72,16 @@ class MiniMap:
 
                     x_idxs = np.arange(min_x, min_x + self.chunk_tiles_across).astype(np.int8)[:, None]
                     y_idxs = np.arange(min_y, min_y + self.chunk_tiles_across).astype(np.int8)[None, :]
-                    cur_seen_tiles = self.seen_tiles[
-                        x_idxs, y_idxs, self.player.z if z_slice_view else self.proc_gen.z_map[x_idxs, y_idxs]
-                    ]
+                    cur_seen_tiles = self.seen_tiles[x_idxs, y_idxs, self.player.z if z_slice_view else self.proc_gen.z_map[x_idxs, y_idxs]]
                     
                     if (prev_seen_tiles := self.chunk_tiles_seen[self.chunk_renderer.view].get(xyz)) is None:
                         self.chunk_img_cache[self.chunk_renderer.view][xyz] = self.get_chunk_img(*xyz[:2])
                     
                     elif not np.array_equal(prev_seen_tiles, cur_seen_tiles):
-                        self.chunk_img_cache[self.chunk_renderer.view][xyz] = self.update_chunk_img(
-                            *xyz, prev_seen_tiles, cur_seen_tiles
-                        )
+                        self.chunk_img_cache[self.chunk_renderer.view][xyz] = self.update_chunk_img(*xyz, prev_seen_tiles, cur_seen_tiles)
 
                     self.chunk_tiles_seen[self.chunk_renderer.view][xyz] = cur_seen_tiles
-                    
-                    self.img.blit(
-                        self.chunk_img_cache[self.chunk_renderer.view][xyz], 
-                        (x * self.chunk_px_size, y * self.chunk_px_size)
-                    )
+                    self.img.blit(self.chunk_img_cache[self.chunk_renderer.view][xyz], (x * self.chunk_px_size, y * self.chunk_px_size))
     
         screen.blit(self.img, self.topleft)
 
@@ -135,8 +128,8 @@ class MiniMap:
         self.seen_tiles[min_x:max_x, min_y:max_y, z] = True
 
     def get_chunk_img(self, chunk_x, chunk_y):
-        img = pg.Surface((self.chunk_px_size, self.chunk_px_size))
-        tile = pg.Surface((self.tile_size, self.tile_size))
+        img = self.chunk_img.copy()
+        tile = self.chunk_tile.copy()
         for x in range(min(self.chunk_tiles_across, MAP_TILE_SIZE[0] - chunk_x)):
             for y in range(min(self.chunk_tiles_across, MAP_TILE_SIZE[1] - chunk_y)):
                 tile_x, tile_y = chunk_x + x, chunk_y + y
@@ -149,16 +142,25 @@ class MiniMap:
     
     def update_chunk_img(self, chunk_x, chunk_y, chunk_z, prev_seen_tiles, cur_seen_tiles):
         img = self.chunk_img_cache[self.chunk_renderer.view][(chunk_x, chunk_y, chunk_z)]
-        tile = pg.Surface((self.tile_size, self.tile_size))
+        tile = self.chunk_tile.copy()
         for col, row in np.argwhere(prev_seen_tiles != cur_seen_tiles): 
             if color := self.get_tile_color(self.chunk_renderer.get_tile_name(chunk_x + col, chunk_y + row)):
                 tile.fill(color) 
                 img.blit(tile, (col * self.tile_size, row * self.tile_size))
         return img
 
-    def update_tile_in_chunk(self):
-        pass
- 
+    def update_tile_in_chunk(self, tile_x, tile_y, new_tile_name):
+        chunk_tile_x = tile_x // self.chunk_tiles_across
+        chunk_tile_y = tile_y // self.chunk_tiles_across
+        chunk_key = (chunk_tile_x, chunk_tile_y, int(self.proc_gen.z_map[chunk_tile_x, chunk_tile_y]))
+        px_xy_in_chunk = pg.Vector2(tile_x, tile_y) - pg.Vector2(chunk_tile_x, chunk_tile_y)
+
+        tile_surf = self.chunk_tile.copy()
+        tile_surf.fill(self.get_tile_color(new_tile_name))
+
+        for view in (v for v in self.chunk_renderer.view_types if chunk_key in self.chunk_img_cache[v]):
+            self.chunk_img_cache[view][chunk_key].blit(tile_surf, px_xy_in_chunk)
+
     def get_tile_color(self, name):
         if name in SOLID_TILES:
             return SOLID_TILES[name].get('minimap rgb')

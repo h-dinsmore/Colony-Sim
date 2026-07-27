@@ -35,9 +35,7 @@ class Game:
         
         self.chunk_renderer = ChunkRenderer(self.world_surf, self.proc_gen, self.assets, self.cam, self.keyboard)
         
-        self.village = Village(
-            self.proc_gen, self.assets, self.keyboard, self.mouse, self.world_surf, self.chunk_renderer
-        )
+        self.village = Village(self.proc_gen, self.assets, self.keyboard, self.mouse, self.world_surf, self.chunk_renderer)
         self.chunk_renderer.player = self.village.player
         
         self.weather = Weather(self.world_surf, self.cam, self.proc_gen, self.village.village_sprs)
@@ -46,7 +44,8 @@ class Game:
             self.cam, self.proc_gen, self.village.player, self.keyboard, self.mouse, self.chunk_renderer, 
             self.weather, self.assets, self.clock, self.village
         )
-        self.village.ui = self.ui
+        for spr in self.village.village_sprs:
+            spr.ui = self.ui
 
     def update_visible_surf(self): 
         scaled_res = pg.Vector2(RES) / self.cam.zoom_scale

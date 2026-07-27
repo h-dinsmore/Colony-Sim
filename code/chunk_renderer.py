@@ -65,12 +65,11 @@ class ChunkRenderer:
         if self.view == 'elevation' and self.player.z not in self.proc_gen.z_dif_map:
             self.proc_gen.update_z_dif_map(self.player.z)
 
-        img_folder = self.assets.graphics['terrain'].files
         tile_x, tile_y = chunk_x // TILE_SIZE, chunk_y // TILE_SIZE
         for x in range(img.width // TILE_SIZE):
             for y in range(img.height // TILE_SIZE):
                 if (tile_name := self.get_tile_name(tile_x + x, tile_y + y)) != 'air':
-                    img.blit(img_folder[tile_name], (x * TILE_SIZE, y * TILE_SIZE))
+                    img.blit(self.assets.get_img(tile_name), (x * TILE_SIZE, y * TILE_SIZE))
         
         self.img_cache[self.view][(chunk_x, chunk_y, chunk_z)] = img
         return img
@@ -82,11 +81,11 @@ class ChunkRenderer:
         chunk_px_x = ((tile_x * TILE_SIZE) // self.chunk_px_size) * self.chunk_px_size
         chunk_px_y = ((tile_y * TILE_SIZE) // self.chunk_px_size) * self.chunk_px_size
 
-        tile_xy_in_chunk = (pg.Vector2(tile_x, tile_y) * TILE_SIZE) - pg.Vector2(chunk_px_x, chunk_px_y)
+        px_xy_in_chunk = (pg.Vector2(tile_x, tile_y) * TILE_SIZE) - pg.Vector2(chunk_px_x, chunk_px_y)
         chunk_key = (chunk_px_x, chunk_px_y, int(self.proc_gen.z_map[chunk_tile_x, chunk_tile_y]))
         # TODO: check between placing/removing tiles after tile placing is added
         for view in (v for v in self.view_types if chunk_key in self.img_cache[v]):
-            self.img_cache[view][chunk_key].blit(self.get_tile_below_img(view, hardness, tile_x, tile_y, name), tile_xy_in_chunk)
+            self.img_cache[view][chunk_key].blit(self.get_tile_below_img(view, hardness, tile_x, tile_y, name), px_xy_in_chunk)
 
     def get_tile_z_idx(self, tile_x, tile_y):
         match self.view:
@@ -105,7 +104,7 @@ class ChunkRenderer:
                 if self.proc_gen.z_map[x, y] == 0:
                     img = self.get_air_tile_img()
                 else:
-                    img = self.assets.graphics['terrain'].files[name].copy()
+                    img = self.assets.get_img(name).copy()
                     if hardness > 0: # else the tile below will be shown at full alpha
                         img.set_alpha(int(255 * (hardness / (SOLID_TILES if name in SOLID_TILES else SURFACE_TERRAIN)[name]['hardness']))) # TODO: update this when liquids are added
             else: 

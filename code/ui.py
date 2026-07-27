@@ -41,7 +41,7 @@ class UI:
 
         screen_xy = ((pg.Vector2(x, y) * TILE_SIZE) - self.cam.offset) * self.cam.zoom_scale
         if not (air_tile := tile_id == self.proc_gen.tile_ids['air']):
-            img = self.assets.graphics['terrain'].files[self.proc_gen.id_tiles[tile_id]]
+            img = self.assets.get_img(self.proc_gen.id_tiles[tile_id])
             screen.blit(
                 img if self.cam.zoom_scale == 1.0 else pg.transform.scale(img, pg.Vector2(TILE_SIZE, TILE_SIZE) * self.cam.zoom_scale), 
                 screen_xy,
