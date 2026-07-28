@@ -23,8 +23,11 @@ class UI:
 
         self.player_inv_ui = PlayerInventoryUI(self, player, self.mini_map, assets, keyboard, mouse)
 
-        self.reachable_tile_surf = pg.Surface((TILE_SIZE, TILE_SIZE))
-        self.reachable_tile_surf.set_alpha(64)
+        self.tile_holding_img = pg.Surface((TILE_SIZE, TILE_SIZE))
+        self.tile_holding_img.set_alpha(128)
+        self.tile_holding_img_overlay = self.tile_holding_img.copy()
+        self.tile_holding_img_overlay.set_alpha(self.tile_holding_img.get_alpha() // 2)
+        self.old_item_holding = player.item_holding
 
         self.rect = pg.Rect((0,0), (self.mini_map.outline_rect2.width, self.mini_map.outline_rect2.height + self.player_inv_ui.rect.height))
        
@@ -40,28 +43,35 @@ class UI:
             tile_id = self.proc_gen.tile_map[x, y, z]
 
         screen_xy = ((pg.Vector2(x, y) * TILE_SIZE) - self.cam.offset) * self.cam.zoom_scale
-        if not (air_tile := tile_id == self.proc_gen.tile_ids['air']):
+        if tile_id != self.proc_gen.tile_ids['air']:
             img = self.assets.get_img(self.proc_gen.id_tiles[tile_id])
             screen.blit(
                 img if self.cam.zoom_scale == 1.0 else pg.transform.scale(img, pg.Vector2(TILE_SIZE, TILE_SIZE) * self.cam.zoom_scale), 
-                screen_xy,
+                screen_xy, 
                 special_flags=pg.BLEND_RGB_ADD
             )
-        self.render_reachable_tile_surf(screen, screen_xy, x, y, z, air_tile)
+        self.render_tile_holding_img(screen, screen_xy, x, y, z)
 
-    def render_reachable_tile_surf(self, screen, screen_xy, x, y, z, air_tile):
-        if self.old_zoom_scale != self.cam.zoom_scale:
+    def render_tile_holding_img(self, screen, screen_xy, x, y, z):
+        if self.player.item_holding != self.old_item_holding:
+            self.old_item_holding = self.player.item_holding
+            if self.player.item_holding is not None:
+                self.tile_holding_img = self.assets.get_img(self.player.item_holding) 
+
+        if self.old_zoom_scale != self.cam.zoom_scale: 
             self.old_zoom_scale = self.cam.zoom_scale
-            self.reachable_tile_surf = pg.transform.scale(self.reachable_tile_surf, pg.Vector2(TILE_SIZE, TILE_SIZE) * self.cam.zoom_scale)
+            img_size_scaled = pg.Vector2(TILE_SIZE, TILE_SIZE) * self.cam.zoom_scale
+            self.tile_holding_img = pg.transform.scale(self.tile_holding_img, img_size_scaled)
+            self.tile_holding_img_overlay = pg.transform.scale(self.tile_holding_img_overlay, img_size_scaled)
+            
+        if self.player.item_holding is not None:
+            screen.blit(self.tile_holding_img, screen_xy)
 
-        self.reachable_tile_surf.fill('green' if self.player.check_reachable_tile(x, y, z) else 'red')
-        screen.blit(self.reachable_tile_surf, screen_xy)
+        self.tile_holding_img_overlay.fill('green' if self.player.check_valid_tile(x, y, z) else 'red')
+        screen.blit(self.tile_holding_img_overlay, screen_xy)
 
-    def spawn_item_sprite(self, tile_id, xy):
-        tile_img = self.assets.get_tile_img
-
-    def draw_outline(self, width):
-        pass
+    #def spawn_item_sprite(self, tile_id, xy):
+        #tile_img = self.assets.get_tile_img
 
     def update_rect_height(self):
         mini_map_h = self.mini_map.outline_rect2.height if self.mini_map.show else 0

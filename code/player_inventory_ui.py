@@ -34,7 +34,7 @@ class PlayerInventoryUI:
         self.old_topleft = None
         self.topleft = self.update_topleft()
 
-        self.slot_overlap_idx = None
+        self.col_row_overlap, self.num_slot_overlap = None, None 
         self.slot_highlight_surf = pg.Surface((self.slot_len, self.slot_len))
         self.slot_highlight_surf.fill(pg.Color(self.surf_color)[:3] + pg.Vector3(32))
         self.slot_highlight_surf.set_alpha(self.alpha)
@@ -69,12 +69,12 @@ class PlayerInventoryUI:
             rect = self.rect_closed
 
         half_slot_len = pg.Vector2(self.slot_len, self.slot_len) / 2
-        mouse_overlap = self.slot_overlap_idx is not None
+        mouse_overlap = self.col_row_overlap is not None
         for x in range(self.num_cols):
             for y in range(self.num_rows if self.open else 1):
                 slot_has_item = (inv_idx := (self.num_cols * y) + x) < (self.num_slots_filled if self.open else min(self.num_cols, self.num_slots_filled))
 
-                if mouse_overlap and (x, y) == self.slot_overlap_idx:
+                if mouse_overlap and (x, y) == self.col_row_overlap:
                     self.render_mouse_overlap(surf, x, y, slot_has_item, inv_idx, screen)
                 
                 if slot_has_item:
@@ -94,11 +94,12 @@ class PlayerInventoryUI:
     def check_mouse_overlap(self):
         mx, my = self.mouse.screen_pos
         if self.rect.collidepoint(mx, my):
-            slot_x = mx // self.slot_len
-            slot_y = (my - self.rect.top) // self.slot_len
-            self.slot_overlap_idx = (int(slot_x), int(slot_y))
+            col = mx // self.slot_len
+            row = (my - self.rect.top) // self.slot_len
+            self.col_row_overlap = (int(col), int(row))
+            self.num_slot_overlap = int((self.num_cols * row) + col)
         else:
-            self.slot_overlap_idx = None
+            self.col_row_overlap, self.num_slot_overlap = None, None
 
     def render_mouse_overlap(self, surf, x, y, slot_has_item, inv_idx, screen):
         surf.blit(self.slot_highlight_surf, self.slot_highlight_surf.get_rect(topleft=pg.Vector2(x, y) * self.slot_len))

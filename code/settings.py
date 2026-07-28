@@ -256,6 +256,10 @@ for k in TREES:
 for k in SURFACE_TERRAIN.keys():
     REMOVABLE_TILES.append(k)
 
+TILES_REMOVABLE_WITHOUT_TOOL = SURFACE_TERRAIN.keys() | {'dirt', 'sand', 'snow', 'ice', 'clay'}
+
+PLACEABLE_TILES = SOLID_TILES.keys() | SURFACE_TERRAIN.keys() # TODO: add wood blocks once they can be crafted
+
 LIQUIDS = {'water', 'lava', 'honey'}
 
 ALL_TILES = set(REMOVABLE_TILES) | ELEVATIONS | LIQUIDS

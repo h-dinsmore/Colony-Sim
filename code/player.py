@@ -2,12 +2,12 @@ import pygame as pg
 import numpy as np
 
 from villager import Villager
-from settings import KEY_BINDINGS, MAP_TILE_SIZE, TILE_SIZE, TILE_REACH_RADIUS
+from settings import KEY_BINDINGS, MAP_TILE_SIZE, TILE_SIZE, TILE_REACH_RADIUS, PLACEABLE_TILES, TILES_REMOVABLE_WITHOUT_TOOL, SURFACE_TERRAIN
 from alarm import Alarm
 
 class Player(Villager):
-    def __init__(self, img_folder, xyz, spr_groups, screen, keyboard, mouse, proc_gen, chunk_renderer, village):
-        super().__init__(img_folder, xyz, spr_groups, screen, proc_gen, chunk_renderer, village)
+    def __init__(self, img_folder, xyz, spr_groups, screen, keyboard, mouse, proc_gen, chunk_renderer, village, assets, cam):
+        super().__init__(img_folder, xyz, spr_groups, screen, proc_gen, chunk_renderer, village, assets, cam)
         self.keyboard = keyboard
         self.mouse = mouse
         self.player_spr, self.village_sprs = spr_groups
@@ -18,40 +18,74 @@ class Player(Villager):
         self.tile_remove_check = True
 
     def move(self):
-        old_x, old_y = self.x, self.y
-        new_x, new_y = old_x, old_y
+        dx, dy, xyz = self.get_movement_data()
+        if (dx, dy) != (0, 0):
+            self.x, self.y = xyz[:2]
+            self.rect.move_ip(dx, dy)
+            self.biome_in = self.proc_gen.id_biomes[int(self.proc_gen.biome_map[self.x, self.y])]
+            if dx != 0:
+                self.update_facing_dir(dx)
 
-        if (dx := self.keyboard.pressed_keys[KEY_BINDINGS['+x']] - self.keyboard.pressed_keys[KEY_BINDINGS['-x']]) != 0:
-            new_x = max(0, min(self.x + dx, MAP_TILE_SIZE[0] - 1))
+            z = xyz[2]
+            if z != self.z:
+                for spr in (s for s in self.village_sprs if s not in self.player_spr):
+                    spr.update_visibility()
 
-        if (dy := self.keyboard.pressed_keys[KEY_BINDINGS['+y']] - self.keyboard.pressed_keys[KEY_BINDINGS['-y']]) != 0:
-            new_y = max(0, min(self.y + dy, MAP_TILE_SIZE[1] - 1))
-        
-        if new_x != old_x or new_y != old_y:
-            z = int(self.proc_gen.z_map[new_x, new_y])
-
-            if self.proc_gen.tile_map[new_x, new_y, z] != self.proc_gen.tile_ids['air'] and z <= self.z + TILE_REACH_RADIUS:
-                self.x, self.y = new_x, new_y
-                self.rect.x += dx * TILE_SIZE
-                self.rect.y += dy * TILE_SIZE
-                self.biome_in = self.proc_gen.id_biomes[int(self.proc_gen.biome_map[self.x, self.y])]
-
-                if z < max(1, self.z - 1):
+                if z < self.z - TILE_REACH_RADIUS:
                     self.get_fall_damage(z) 
 
-                if z != self.z:
-                    for spr in [s for s in self.village_sprs if s not in self.player_spr]:
-                        spr.update_visibility()
+                self.z = z
+                self.living = z > -1
 
-                    self.z = z
-                    self.living = z > -1
+    def get_movement_data(self):
+        x, y, z = self.x, self.y, self.z
+        keys = self.keyboard.pressed_keys
+        if (dx := keys[KEY_BINDINGS['+x']] - keys[KEY_BINDINGS['-x']]) != 0:
+            x = max(0, min(self.x + dx, MAP_TILE_SIZE[0] - 1))
+            dx *= TILE_SIZE
+            
+        if (dy := keys[KEY_BINDINGS['+y']] - keys[KEY_BINDINGS['-y']]) != 0:
+            y = max(0, min(self.y + dy, MAP_TILE_SIZE[1] - 1))
+            dy *= TILE_SIZE
+        
+        if x != self.x or y != self.y:
+            z = int(self.proc_gen.z_map[x, y])
 
-    def check_removing_tile(self):
-        if self.tile_remove_check and pg.mouse.get_pressed()[0]:
+        if (x, y, z) != (self.x, self.y, self.z) and (self.proc_gen.tile_map[x, y, z] == self.proc_gen.tile_ids['air'] or \
+            z > self.z + TILE_REACH_RADIUS):
+            x, y, z = self.x, self.y, self.z
+
+        return dx, dy, (x, y, z)
+
+    def update_facing_dir(self, dx):
+        if dx == TILE_SIZE and self.facing_dir == 'left': 
+            self.facing_dir = 'right' 
+            self.image = self.flipped_img
+
+        elif dx == -TILE_SIZE and self.facing_dir == 'right':
+            self.facing_dir = 'left'
+            self.image = self.default_img
+
+    def check_placing_or_removing_tile(self):
+        if self.tile_remove_check or self.item_holding in PLACEABLE_TILES:
             x, y = self.mouse.tile_at
             z = self.z if self.chunk_renderer.view == 'z slice' else int(self.proc_gen.z_map[x, y])
-            if self.check_reachable_tile(x, y, z):
-                self.remove_tile(x, y, z)
+            if self.check_valid_tile(x, y, z):
+                if self.item_holding in PLACEABLE_TILES and self.proc_gen.z_map[x, y] < MAP_TILE_SIZE[2] - 1 and \
+                    (self.proc_gen.surface_terrain_map[x, y] == 0 or self.item_holding not in SURFACE_TERRAIN):
+                        self.place_tile(x, y, z)
+
+                elif self.tile_remove_check and not self.item_holding in PLACEABLE_TILES:
+                    if self.item_holding is not None and 'pickaxe' in self.item_holding:
+                        self.remove_tile(x, y, z)
+                    else:
+                        if (surface_terrain_id := int(self.proc_gen.surface_terrain_map[x, y])) > 0:
+                            tile_name = self.proc_gen.id_surface_terrain[surface_terrain_id]
+                        else:
+                            tile_name = self.proc_gen.id_tiles[int(self.proc_gen.tile_map[x, y, z])]
+                        
+                        if tile_name in TILES_REMOVABLE_WITHOUT_TOOL:
+                            self.remove_tile(x, y, z)     
 
     def update_tile_remove_check(self):
         self.tile_remove_check = True
@@ -59,4 +93,15 @@ class Player(Villager):
     def update(self):
         super().update()
         self.move()
-        self.check_removing_tile()
+        if pg.mouse.get_pressed()[0]: 
+            if (slot_num := self.ui.player_inv_ui.num_slot_overlap) is None:
+                self.check_placing_or_removing_tile()
+            else:
+                old_item = self.item_holding
+                if slot_num < len(self.inv):
+                    self.item_holding = list(self.inv)[self.ui.player_inv_ui.num_slot_overlap]
+                else:
+                    self.item_holding = None
+
+                if self.item_holding != old_item:
+                    self.update_item_holding_img()

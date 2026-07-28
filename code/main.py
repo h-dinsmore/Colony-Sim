@@ -35,7 +35,7 @@ class Game:
         
         self.chunk_renderer = ChunkRenderer(self.world_surf, self.proc_gen, self.assets, self.cam, self.keyboard)
         
-        self.village = Village(self.proc_gen, self.assets, self.keyboard, self.mouse, self.world_surf, self.chunk_renderer)
+        self.village = Village(self.proc_gen, self.assets, self.keyboard, self.mouse, self.world_surf, self.chunk_renderer, self.cam)
         self.chunk_renderer.player = self.village.player
         
         self.weather = Weather(self.world_surf, self.cam, self.proc_gen, self.village.village_sprs)

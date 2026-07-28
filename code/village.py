@@ -7,7 +7,7 @@ import numpy as np
 from random import randint
 
 class Village:
-    def __init__(self, proc_gen, assets, keyboard, mouse, screen, chunk_renderer):
+    def __init__(self, proc_gen, assets, keyboard, mouse, screen, chunk_renderer, cam):
         self.proc_gen = proc_gen
         self.assets = assets
         self.keyboard = keyboard
@@ -31,7 +31,9 @@ class Village:
             mouse,
             proc_gen,
             chunk_renderer,
-            self # to have a reference to UI after it's set
+            self, # to have a reference to UI after it's set
+            assets,
+            cam
         )
 
         for i in range(2, self.num_pop + 1): 
@@ -43,7 +45,9 @@ class Village:
                 screen,
                 proc_gen,
                 chunk_renderer,
-                self
+                self,
+                assets,
+                cam
             )
 
     def get_spawn_map(self):
@@ -70,7 +74,7 @@ class Village:
         for spr in self.village_sprs:
             if spr.visible and spr not in self.player_spr:
                 self.screen.blit(spr.image, spr.rect.center)
-                
+
             spr.update()
-        
+            
         self.screen.blit(self.player.image, self.player.rect.center)

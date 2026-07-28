@@ -4,7 +4,7 @@ from random import randint, choice
 from settings import MONTHS_DAYS, TILE_SIZE, TILE_REACH_RADIUS, TREES, FPS, SURFACE_TERRAIN
 
 class Villager(pg.sprite.Sprite):
-    def __init__(self, img_folder, xyz, spr_groups, screen, proc_gen, chunk_renderer, village):
+    def __init__(self, img_folder, xyz, spr_groups, screen, proc_gen, chunk_renderer, village, assets, cam):
         super().__init__(*spr_groups)
         self.img_folder = img_folder
         self.action = 'idle'
@@ -16,10 +16,13 @@ class Villager(pg.sprite.Sprite):
         self.proc_gen = proc_gen
         self.chunk_renderer = chunk_renderer
         self.village = village
+        self.assets = assets
+        self.cam = cam
         self.ui = None # not initialized yet
-        
-        self.item_holding = None
+
         self.facing_dir = 'left'
+        self.default_img = self.image.copy()
+        self.flipped_img = pg.transform.flip(self.image, True, False)
         self.visible = True
         self.biome_in = proc_gen.id_biomes[int(proc_gen.biome_map[self.x, self.y])]
         self.alarms = {}
@@ -27,7 +30,9 @@ class Villager(pg.sprite.Sprite):
         self.inv = {}
         self.num_inv_slots = 64
         self.max_slot_storage = 64
-
+        self.item_holding, self.item_holding_img, self.item_holding_offset = None, None, None
+        self.item_holding_outline_w = 1
+        
         self.hunger = 100 
         self.thirst = 100
         self.sleep = 100
@@ -65,11 +70,11 @@ class Villager(pg.sprite.Sprite):
             self.living = False
             self.kill()
 
-    def check_reachable_tile(self, x, y, z):
-        return (not self.proc_gen.id_tiles[self.proc_gen.tile_map[x, y, z]] == 'air') and \
+    def check_valid_tile(self, x, y, z):
+        return (self.proc_gen.surface_terrain_map[x, y] > 0 or self.proc_gen.tile_map[x, y, z] != self.proc_gen.tile_ids['air']) and \
             abs(self.x - x) <= TILE_REACH_RADIUS and abs(self.y - y) <= TILE_REACH_RADIUS and \
             ((abs(self.z - z) <= TILE_REACH_RADIUS) if self.chunk_renderer.view != 'z slice' else z == self.proc_gen.z_map[x, y])
-
+           
     def remove_tile(self, x, y, z):
         if (name := self.chunk_renderer.get_tile_name(x, y)) in SURFACE_TERRAIN:
             hardness_map = self.proc_gen.surface_terrain_hardness_map
@@ -80,6 +85,7 @@ class Villager(pg.sprite.Sprite):
         
         if hardness_map[idx] > 0:
             hardness_map[idx] -= min(hardness_map[idx], int((self.strength * self.get_tool_strength()) / FPS))
+
         if hardness_map[idx] == 0:
             self.add_item_to_inv(name)
             old_surface_z = int(self.proc_gen.z_map[x, y])
@@ -121,6 +127,30 @@ class Villager(pg.sprite.Sprite):
             else: # update the dictionary to have each slot of the same item be <name> 0,1,... and check if there's any remaining wood from the slot reaching its capacity
                 pass
 
+    def place_tile(self, x, y, z):
+        pass
+
+    def render_item_holding(self):
+        if self.item_holding_img is None or self.item_holding_img.width != self.cam.screen_tile_size: 
+            self.update_item_holding_img()
+
+        self.screen.blit(
+            self.item_holding_img, 
+            self.rect.center + (self.item_holding_offset if self.facing_dir == 'right' else -self.item_holding_offset)
+        )
+
+    def update_item_holding_img(self):
+        if self.item_holding is not None:
+            tile_size_scaled = TILE_SIZE * self.cam.zoom_scale
+            self.item_holding_img = pg.transform.scale(self.assets.get_img(self.item_holding), pg.Vector2(tile_size_scaled))
+            self.item_holding_img.set_alpha(128)
+            self.item_holding_offset = pg.Vector2(tile_size_scaled / 2, 0)
+
     def update(self):
         for alarm in self.alarms.values():
             alarm.update()
+
+        if self.item_holding is not None:
+            self.render_item_holding()
+        else:
+            self.item_holding_img, self.item_holding_outline = None, None

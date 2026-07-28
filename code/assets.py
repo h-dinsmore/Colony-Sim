@@ -24,7 +24,7 @@ class Assets:
         }
         for i, (_, file_name) in enumerate(sorted(Z_DIF_ICONS.items(), key=lambda items: items[0][1], reverse=True), start=1):
             self.graphics['terrain'].subfolders['elevations'].files[file_name].set_alpha(255 - (i * 16))
-        print(self.graphics)
+        
         self.colors = {
             'transparent': (0,0,0,0)
         }
