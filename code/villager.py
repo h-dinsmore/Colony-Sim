@@ -1,7 +1,7 @@
 import pygame as pg
 from random import randint, choice
 
-from settings import MONTHS_DAYS, TILE_SIZE, TILE_REACH_RADIUS, TREES, FPS, SURFACE_TERRAIN
+from settings import MONTHS_DAYS, TILE_SIZE, TILE_REACH_RADIUS, TREES, FPS, SURFACE_TERRAIN, LIQUIDS, SOLID_TILES
 
 class Villager(pg.sprite.Sprite):
     def __init__(self, img_folder, xyz, spr_groups, screen, proc_gen, chunk_renderer, village, assets, cam):
@@ -30,8 +30,10 @@ class Villager(pg.sprite.Sprite):
         self.inv = {}
         self.num_inv_slots = 64
         self.max_slot_storage = 64
-        self.item_holding, self.item_holding_img, self.item_holding_offset = None, None, None
+        self.item_holding, self.item_holding_img = None, None
         self.item_holding_outline_w = 1
+        self.item_holding_bg = pg.Surface((TILE_SIZE, TILE_SIZE), pg.SRCALPHA)
+        self.item_holding_bg.fill((255, 255, 255))
         
         self.hunger = 100 
         self.thirst = 100
@@ -87,7 +89,7 @@ class Villager(pg.sprite.Sprite):
             hardness_map[idx] -= min(hardness_map[idx], int((self.strength * self.get_tool_strength()) / FPS))
 
         if hardness_map[idx] == 0:
-            self.add_item_to_inv(name)
+            self.update_inv(name, add=True)
             old_surface_z = int(self.proc_gen.z_map[x, y])
             self.proc_gen.update_maps_after_removed_tile(x, y, z, name) # update the tile map before the chunk renderer to show the tile below
             name = self.chunk_renderer.get_tile_name(x, y)
@@ -105,7 +107,7 @@ class Villager(pg.sprite.Sprite):
                 self.tile_remove_check = False
                 self.alarms['update tile remove check'].start()
         
-        self.chunk_renderer.update_tile_in_chunk(x, y, hardness_map[idx], name)
+        self.chunk_renderer.update_tile_in_chunk(x, y, name, hardness_map[idx])
 
     def get_tool_strength(self):
         if self.item_holding is None:
@@ -113,38 +115,61 @@ class Villager(pg.sprite.Sprite):
         else:
             pass
 
-    def add_item_to_inv(self, tile_name):
-        item_name = tile_name if tile_name not in TREES else 'wood'
-        item_amount = 1 if item_name != 'wood' else 4
-        if item_name not in self.inv and len(self.inv) < self.num_inv_slots:
-            self.inv[item_name] = {'amount': item_amount, 'idx': len(self.inv)}
-            if self.is_player:
-                self.ui.player_inv_ui.num_slots_filled += 1
-                self.ui.player_inv_ui.item_names.append(item_name)
+    def update_inv(self, item_name, add=False, remove=False):
+        if item_name in TREES:
+            item_name = 'wood'
+
+        item_amount = (1 if item_name != 'wood' else 4)
+        if add:
+            self.add_inv_item(item_name, item_amount)
         else:
-            if (item_amount := min(self.max_slot_storage, self.inv[item_name]['amount'] + item_amount)) <= self.max_slot_storage:
-                self.inv[item_name]['amount'] = item_amount
+            self.remove_inv_item(item_name, item_amount)
+
+    def add_inv_item(self, name, amount):
+        if name not in self.inv and len(self.inv) < self.num_inv_slots:
+            self.inv[name] = {'amount': amount, 'idx': len(self.inv)}
+        else:
+            if (slot_amount := min(self.max_slot_storage, self.inv[name]['amount'] + amount)) <= self.max_slot_storage:
+                self.inv[name]['amount'] = slot_amount
             else: # update the dictionary to have each slot of the same item be <name> 0,1,... and check if there's any remaining wood from the slot reaching its capacity
-                pass
+                remainder = amount - slot_amount
+
+    def remove_inv_item(self, name, amount):
+        self.inv[name]['amount'] -= amount
+        if self.inv[name]['amount'] == 0:
+            del self.inv[name]
+            if name not in self.inv:
+                self.item_holding = None
 
     def place_tile(self, x, y, z):
-        pass
+        if surface_tile := self.item_holding in SURFACE_TERRAIN:
+            self.proc_gen.surface_terrain_map[x, y] = self.proc_gen.surface_terrain_ids[self.item_holding]
+            tile_hardness = SURFACE_TERRAIN[self.item_holding]['hardness']
+            self.proc_gen.surface_terrain_hardness_map[x, y] = tile_hardness
+        else:
+            self.proc_gen.tile_map[x, y, z] = self.proc_gen.tile_ids[self.item_holding]
+            if self.item_holding not in LIQUIDS:
+                self.proc_gen.tile_hardness_map[x, y, z] = SOLID_TILES[self.item_holding]['hardness']
+
+        self.ui.mini_map.update_tile_in_chunk(x, y, self.item_holding)
+        self.chunk_renderer.update_tile_in_chunk(x, y, self.item_holding)
+        self.update_inv(self.item_holding, remove=True) # keep this last in case it changes item_holding
 
     def render_item_holding(self):
         if self.item_holding_img is None or self.item_holding_img.width != self.cam.screen_tile_size: 
             self.update_item_holding_img()
-
-        self.screen.blit(
-            self.item_holding_img, 
-            self.rect.center + (self.item_holding_offset if self.facing_dir == 'right' else -self.item_holding_offset)
-        )
+        
+        xy = self.rect.midleft if self.facing_dir == 'left' else self.rect.midright + pg.Vector2(5,0)
+        self.screen.blit(self.item_holding_bg, xy, special_flags=pg.BLEND_RGB_ADD)
+        self.screen.blit(self.item_holding_img, xy)
 
     def update_item_holding_img(self):
         if self.item_holding is not None:
-            tile_size_scaled = TILE_SIZE * self.cam.zoom_scale
-            self.item_holding_img = pg.transform.scale(self.assets.get_img(self.item_holding), pg.Vector2(tile_size_scaled))
-            self.item_holding_img.set_alpha(128)
-            self.item_holding_offset = pg.Vector2(tile_size_scaled / 2, 0)
+            tile_size_scaled = (TILE_SIZE * 0.75) * self.cam.zoom_scale
+            self.item_holding_img = pg.transform.scale(self.assets.get_img(self.item_holding).copy(), pg.Vector2(tile_size_scaled))
+            self.item_holding_img.set_colorkey((0,0,0))
+            self.item_holding_img.set_alpha(200)
+            self.item_holding_bg = pg.transform.scale(self.item_holding_bg, pg.Vector2(tile_size_scaled))
 
     def update(self):
         for alarm in self.alarms.values():
@@ -153,4 +178,4 @@ class Villager(pg.sprite.Sprite):
         if self.item_holding is not None:
             self.render_item_holding()
         else:
-            self.item_holding_img, self.item_holding_outline = None, None
+            self.item_holding_img, self.item_holding_offset = None, None

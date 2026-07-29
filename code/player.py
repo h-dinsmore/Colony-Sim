@@ -2,7 +2,7 @@ import pygame as pg
 import numpy as np
 
 from villager import Villager
-from settings import KEY_BINDINGS, MAP_TILE_SIZE, TILE_SIZE, TILE_REACH_RADIUS, PLACEABLE_TILES, TILES_REMOVABLE_WITHOUT_TOOL, SURFACE_TERRAIN
+from settings import KEY_BINDINGS, MAP_TILE_SIZE, TILE_SIZE, TILE_REACH_RADIUS, PLACEABLE_TILES, TILES_REMOVABLE_WITHOUT_PICKAXE, SURFACE_TERRAIN
 from alarm import Alarm
 
 class Player(Villager):
@@ -66,42 +66,49 @@ class Player(Villager):
             self.facing_dir = 'left'
             self.image = self.default_img
 
-    def check_placing_or_removing_tile(self):
-        if self.tile_remove_check or self.item_holding in PLACEABLE_TILES:
-            x, y = self.mouse.tile_at
-            z = self.z if self.chunk_renderer.view == 'z slice' else int(self.proc_gen.z_map[x, y])
-            if self.check_valid_tile(x, y, z):
-                if self.item_holding in PLACEABLE_TILES and self.proc_gen.z_map[x, y] < MAP_TILE_SIZE[2] - 1 and \
-                    (self.proc_gen.surface_terrain_map[x, y] == 0 or self.item_holding not in SURFACE_TERRAIN):
-                        self.place_tile(x, y, z)
+    def check_placing_tile(self):
+        x, y = self.mouse.tile_at
+        z = self.z if self.chunk_renderer.view == 'z slice' else int(self.proc_gen.z_map[x, y])
+        if self.check_valid_tile(x, y, z):
+            if self.item_holding in PLACEABLE_TILES and self.proc_gen.z_map[x, y] < MAP_TILE_SIZE[2] - 1 and \
+                (int(self.proc_gen.surface_terrain_map[x, y]) == 0 or self.item_holding not in SURFACE_TERRAIN):
+                    self.place_tile(x, y, z)
 
-                elif self.tile_remove_check and not self.item_holding in PLACEABLE_TILES:
-                    if self.item_holding is not None and 'pickaxe' in self.item_holding:
-                        self.remove_tile(x, y, z)
-                    else:
-                        if (surface_terrain_id := int(self.proc_gen.surface_terrain_map[x, y])) > 0:
-                            tile_name = self.proc_gen.id_surface_terrain[surface_terrain_id]
-                        else:
-                            tile_name = self.proc_gen.id_tiles[int(self.proc_gen.tile_map[x, y, z])]
-                        
-                        if tile_name in TILES_REMOVABLE_WITHOUT_TOOL:
-                            self.remove_tile(x, y, z)     
+    def check_removing_tile(self):
+        x, y = self.mouse.tile_at
+        z = self.z if self.chunk_renderer.view == 'z slice' else int(self.proc_gen.z_map[x, y])
+        if self.check_valid_tile(x, y, z):
+            if self.item_holding is not None and 'pickaxe' in self.item_holding:
+                self.remove_tile(x, y, z)
+            else:
+                if (surface_terrain_id := int(self.proc_gen.surface_terrain_map[x, y])) > 0:
+                    tile_name = self.proc_gen.id_surface_terrain[surface_terrain_id]
+                else:
+                    tile_name = self.proc_gen.id_tiles[int(self.proc_gen.tile_map[x, y, z])]
+                
+                if tile_name in TILES_REMOVABLE_WITHOUT_PICKAXE:
+                    self.remove_tile(x, y, z) 
 
     def update_tile_remove_check(self):
         self.tile_remove_check = True
-    
+
+    def update_item_holding(self):
+        old_item = self.item_holding
+        col, row = self.ui.player_inv_ui.col_row_overlap
+        if (slot_num := (self.ui.player_inv_ui.num_cols * row) + col) < len(self.inv):
+            self.item_holding = list(self.inv)[slot_num]
+        else:
+            self.item_holding = None
+
+        if self.item_holding != old_item:
+            self.update_item_holding_img()
+
     def update(self):
         super().update()
         self.move()
-        if pg.mouse.get_pressed()[0]: 
-            if (slot_num := self.ui.player_inv_ui.num_slot_overlap) is None:
-                self.check_placing_or_removing_tile()
-            else:
-                old_item = self.item_holding
-                if slot_num < len(self.inv):
-                    self.item_holding = list(self.inv)[self.ui.player_inv_ui.num_slot_overlap]
-                else:
-                    self.item_holding = None
-
-                if self.item_holding != old_item:
-                    self.update_item_holding_img()
+        
+        if pg.mouse.get_just_pressed()[0]:
+            self.check_placing_tile() if self.ui.player_inv_ui.col_row_overlap is None else self.update_item_holding()
+        
+        if self.tile_remove_check and pg.mouse.get_pressed()[2]:
+            self.check_removing_tile()

@@ -157,7 +157,6 @@ class MiniMap:
 
         tile_surf = self.chunk_tile.copy()
         tile_surf.fill(self.get_tile_color(new_tile_name))
-
         for view in (v for v in self.chunk_renderer.view_types if chunk_key in self.chunk_img_cache[v]):
             self.chunk_img_cache[view][chunk_key].blit(tile_surf, px_xy_in_chunk)
 

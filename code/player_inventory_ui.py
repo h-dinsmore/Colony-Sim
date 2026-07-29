@@ -18,8 +18,6 @@ class PlayerInventoryUI:
         self.num_rows = player.max_slot_storage // self.num_cols
         self.slot_len = self.mini_map.outline_rect2.width // self.num_cols
     
-        self.num_slots_filled = len(player.inv)
-        self.item_names = list(player.inv)
         self.item_surfs = {}
         self.show = True
         self.open = False # show only the first row or the full inventory
@@ -34,7 +32,7 @@ class PlayerInventoryUI:
         self.old_topleft = None
         self.topleft = self.update_topleft()
 
-        self.col_row_overlap, self.num_slot_overlap = None, None 
+        self.col_row_overlap = None 
         self.slot_highlight_surf = pg.Surface((self.slot_len, self.slot_len))
         self.slot_highlight_surf.fill(pg.Color(self.surf_color)[:3] + pg.Vector3(32))
         self.slot_highlight_surf.set_alpha(self.alpha)
@@ -70,17 +68,24 @@ class PlayerInventoryUI:
 
         half_slot_len = pg.Vector2(self.slot_len, self.slot_len) / 2
         mouse_overlap = self.col_row_overlap is not None
+        num_slots_filled = len(self.player.inv)
         for x in range(self.num_cols):
             for y in range(self.num_rows if self.open else 1):
-                slot_has_item = (inv_idx := (self.num_cols * y) + x) < (self.num_slots_filled if self.open else min(self.num_cols, self.num_slots_filled))
+                slot_has_item = (inv_idx := (self.num_cols * y) + x) < (num_slots_filled if self.open else min(self.num_cols, num_slots_filled))
 
                 if mouse_overlap and (x, y) == self.col_row_overlap:
                     self.render_mouse_overlap(surf, x, y, slot_has_item, inv_idx, screen)
                 
                 if slot_has_item:
-                    if (item_name := self.item_names[inv_idx]) not in self.item_surfs:
-                        self.item_surfs[item_name] = pg.transform.scale(self.assets.get_img(item_name), (self.slot_len * 0.75, self.slot_len * 0.75))
-                    surf.blit(self.item_surfs[item_name], self.item_surfs[item_name].get_rect(center=(pg.Vector2(x, y) * self.slot_len) + half_slot_len))
+                    if (item_name := list(self.player.inv)[inv_idx]) not in self.item_surfs:
+                        self.item_surfs[item_name] = pg.transform.scale(
+                            self.assets.get_img(item_name), 
+                            (self.slot_len * 0.75, self.slot_len * 0.75)
+                        )
+                    surf.blit(
+                        self.item_surfs[item_name], 
+                        self.item_surfs[item_name].get_rect(center=(pg.Vector2(x, y) * self.slot_len) + half_slot_len)
+                    )
 
                     if (item_amount := str(self.player.inv[item_name]['amount'])) not in self.assets.font_text_cache['inv item amounts']:
                         self.assets.font_text_cache['inv item amounts'][item_amount] = self.assets.fonts['inv item amounts'].render(
@@ -94,17 +99,14 @@ class PlayerInventoryUI:
     def check_mouse_overlap(self):
         mx, my = self.mouse.screen_pos
         if self.rect.collidepoint(mx, my):
-            col = mx // self.slot_len
-            row = (my - self.rect.top) // self.slot_len
-            self.col_row_overlap = (int(col), int(row))
-            self.num_slot_overlap = int((self.num_cols * row) + col)
+            self.col_row_overlap = (int(mx) // self.slot_len, (int(my) - self.rect.top) // self.slot_len) # casting mx/my to an int bc they come from a vector2 
         else:
-            self.col_row_overlap, self.num_slot_overlap = None, None
+            self.col_row_overlap = None
 
     def render_mouse_overlap(self, surf, x, y, slot_has_item, inv_idx, screen):
         surf.blit(self.slot_highlight_surf, self.slot_highlight_surf.get_rect(topleft=pg.Vector2(x, y) * self.slot_len))
         if slot_has_item:
-            if (item_name := self.item_names[inv_idx]) not in self.assets.font_text_cache['inv item names']:
+            if (item_name := list(self.player.inv)[inv_idx]) not in self.assets.font_text_cache['inv item names']:
                 text_surf = self.assets.fonts['inv item names'].render(item_name, self.ui.anti_alias, self.ui.font_color)
                 self.assets.font_text_cache['inv item names'][item_name] = {'text': text_surf}
                 

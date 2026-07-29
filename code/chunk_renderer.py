@@ -74,7 +74,7 @@ class ChunkRenderer:
         self.img_cache[self.view][(chunk_x, chunk_y, chunk_z)] = img
         return img
 
-    def update_tile_in_chunk(self, tile_x, tile_y, hardness, name):
+    def update_tile_in_chunk(self, tile_x, tile_y, name, hardness=None):
         chunk_tile_x = tile_x // self.chunk_tile_size
         chunk_tile_y = tile_y // self.chunk_tile_size
 
@@ -85,7 +85,7 @@ class ChunkRenderer:
         chunk_key = (chunk_px_x, chunk_px_y, int(self.proc_gen.z_map[chunk_tile_x, chunk_tile_y]))
         # TODO: check between placing/removing tiles after tile placing is added
         for view in (v for v in self.view_types if chunk_key in self.img_cache[v]):
-            self.img_cache[view][chunk_key].blit(self.get_tile_below_img(view, hardness, tile_x, tile_y, name), px_xy_in_chunk)
+            self.img_cache[view][chunk_key].blit(self.get_tile_below_img(view, tile_x, tile_y, name, hardness), px_xy_in_chunk)
 
     def get_tile_z_idx(self, tile_x, tile_y):
         match self.view:
@@ -96,7 +96,7 @@ class ChunkRenderer:
             case 'elevation': 
                 return self.proc_gen.z_dif_map[self.player.z][tile_x, tile_y]
 
-    def get_tile_below_img(self, view, hardness, x, y, name):
+    def get_tile_below_img(self, view, x, y, name, hardness=None):
         if name == 'air' or view == 'z slice':
             img = self.get_air_tile_img()
         else: 
@@ -105,12 +105,13 @@ class ChunkRenderer:
                     img = self.get_air_tile_img()
                 else:
                     img = self.assets.get_img(name).copy()
-                    if hardness > 0: # else the tile below will be shown at full alpha
-                        img.set_alpha(int(255 * (hardness / (SOLID_TILES if name in SOLID_TILES else SURFACE_TERRAIN)[name]['hardness']))) # TODO: update this when liquids are added
+                    if hardness is not None and hardness > 0: # else the tile below will be shown at full alpha
+                        img.set_alpha(int(255 * (hardness / (SOLID_TILES if name in SOLID_TILES else SURFACE_TERRAIN)[name]['hardness'])))
             else: 
-                if hardness > 0 or self.proc_gen.z_map[x, y] == self.player.z: 
+                if hardness != 0 or self.proc_gen.z_map[x, y] == self.player.z: 
                     img = self.assets.graphics['terrain'].files[name].copy()
-                    img.set_alpha(int(255 * (hardness / (SOLID_TILES if name in SOLID_TILES else SURFACE_TERRAIN)[name]['hardness']))) # TODO: update this when liquids are added
+                    if hardness is not None:
+                        img.set_alpha(int(255 * (hardness / (SOLID_TILES if name in SOLID_TILES else SURFACE_TERRAIN)[name]['hardness'])))
                 else: 
                     img = self.assets.graphics['terrain'].files[self.proc_gen.id_tiles[self.proc_gen.z_dif_map[self.player.z][x, y]]]
         return img
