@@ -90,24 +90,26 @@ class Villager(pg.sprite.Sprite):
 
         if hardness_map[idx] == 0:
             self.update_inv(name, add=True)
-            old_surface_z = int(self.proc_gen.z_map[x, y])
             self.proc_gen.update_maps_after_removed_tile(x, y, z, name) # update the tile map before the chunk renderer to show the tile below
             name = self.chunk_renderer.get_tile_name(x, y)
-            self.ui.mini_map.update_tile_in_chunk(x, y, name) # only updating after a removed tile bc it doesn't render alphas like the chunk renderer
+            self.ui.mini_map.update_tile_in_chunk(x, y, z, name) # only updating after a removed tile bc it doesn't render alphas like the chunk renderer
             
-            if (new_surface_z := int(self.proc_gen.z_map[x, y])) < old_surface_z:
+            if (new_z := int(self.proc_gen.z_map[x, y])) < z:
                 if (x, y) == (self.x, self.y):
-                    self.z = new_surface_z
-                    self.living = new_surface_z > -1
+                    self.z = new_z
+                    self.living = new_z > -1
 
-                if old_surface_z in self.proc_gen.z_dif_map:
-                    self.proc_gen.update_z_dif_map_tile(x, y, old_surface_z, new_surface_z)
+                if z in self.proc_gen.z_dif_map:
+                    self.proc_gen.update_z_dif_map_tile(x, y, z, new_z)
+
+                self.ui.mini_map.update_chunk_img_cache_key(x, y, z, new_z)
+                self.chunk_renderer.update_img_cache_key(x, y, z, new_z)
 
             if self.is_player:
                 self.tile_remove_check = False
                 self.alarms['update tile remove check'].start()
         
-        self.chunk_renderer.update_tile_in_chunk(x, y, name, hardness_map[idx])
+        self.chunk_renderer.update_tile_in_chunk(x, y, z, name, hardness_map[idx])
 
     def get_tool_strength(self):
         if self.item_holding is None:
@@ -142,17 +144,23 @@ class Villager(pg.sprite.Sprite):
                 self.item_holding = None
 
     def place_tile(self, x, y, z):
-        if surface_tile := self.item_holding in SURFACE_TERRAIN:
+        if self.item_holding in SURFACE_TERRAIN:
             self.proc_gen.surface_terrain_map[x, y] = self.proc_gen.surface_terrain_ids[self.item_holding]
-            tile_hardness = SURFACE_TERRAIN[self.item_holding]['hardness']
-            self.proc_gen.surface_terrain_hardness_map[x, y] = tile_hardness
+            self.proc_gen.surface_terrain_hardness_map[x, y] = SURFACE_TERRAIN[self.item_holding]['hardness']
         else:
             self.proc_gen.tile_map[x, y, z] = self.proc_gen.tile_ids[self.item_holding]
             if self.item_holding not in LIQUIDS:
                 self.proc_gen.tile_hardness_map[x, y, z] = SOLID_TILES[self.item_holding]['hardness']
+            
+            self.proc_gen.z_map[x, y] += 1
+            if z in self.proc_gen.z_dif_map:
+                self.proc_gen.update_z_dif_map_tile(x, y, z, self.proc_gen.z_map[x, y])
+            
+            self.ui.mini_map.update_chunk_img_cache_key(x, y, z, self.proc_gen.z_map[x, y])
+            self.chunk_renderer.update_chunk_img_cache_key(x, y, z, self.proc_gen.z_map[x, y])
 
-        self.ui.mini_map.update_tile_in_chunk(x, y, self.item_holding)
-        self.chunk_renderer.update_tile_in_chunk(x, y, self.item_holding)
+        self.ui.mini_map.update_tile_in_chunk(x, y, z, self.item_holding)
+        self.chunk_renderer.update_tile_in_chunk(x, y, z, self.item_holding)
         self.update_inv(self.item_holding, remove=True) # keep this last in case it changes item_holding
 
     def render_item_holding(self):
@@ -170,6 +178,10 @@ class Villager(pg.sprite.Sprite):
             self.item_holding_img.set_colorkey((0,0,0))
             self.item_holding_img.set_alpha(200)
             self.item_holding_bg = pg.transform.scale(self.item_holding_bg, pg.Vector2(tile_size_scaled))
+
+    @property
+    def tile_xy(self):
+        return self.rect.centerx // TILE_SIZE, self.rect.centery // TILE_SIZE
 
     def update(self):
         for alarm in self.alarms.values():

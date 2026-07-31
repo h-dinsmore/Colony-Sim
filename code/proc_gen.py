@@ -185,4 +185,7 @@ class ProcGen:
                         self.z_dif_map[old_z][x, y] = self.tile_ids[Z_DIF_ICONS[(min_dif, max_dif)]]
                         break
             else:
-                self.z_dif_map[old_z][x, y] = self.tile_ids[self.tile_map[x, y, new_z]]
+                if self.surface_terrain_map[x, y] == 0:
+                    self.z_dif_map[old_z][x, y] = self.tile_ids[self.tile_map[x, y, new_z]]
+                else:
+                    self.z_dif_map[old_z][x, y] = self.surface_terrain_ids[self.surface_terrain_map[x, y]]

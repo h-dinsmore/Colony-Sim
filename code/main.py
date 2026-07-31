@@ -40,10 +40,7 @@ class Game:
         
         self.weather = Weather(self.world_surf, self.cam, self.proc_gen, self.village.village_sprs)
 
-        self.ui = UI(
-            self.cam, self.proc_gen, self.village.player, self.keyboard, self.mouse, self.chunk_renderer, 
-            self.weather, self.assets, self.clock, self.village
-        )
+        self.ui = UI(self.cam, self.proc_gen, self.village.player, self.keyboard, self.mouse, self.chunk_renderer, self.weather, self.assets)
         for spr in self.village.village_sprs:
             spr.ui = self.ui
 
@@ -79,7 +76,7 @@ class Game:
                     self.cam.update_zoom(event)
                     
             self.update()
-
+            
         pg.quit()
         sys.exit()
 

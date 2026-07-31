@@ -20,7 +20,7 @@ class ChunkRenderer:
         self.view_types = ('elevation', 'surface', 'z slice')
         self.view = 'surface'
         self.prev_z, self.prev_view = None, None
-        self.img_cache = {k: {} for k in self.view_types}
+        self.chunk_img_cache = {k: {} for k in self.view_types}
 
     def render(self):
         new_cam_offset = self.cam.offset != self.prev_cam_offset
@@ -40,7 +40,7 @@ class ChunkRenderer:
             if new_view:
                 self.prev_view = self.view
         
-        cache = self.img_cache[self.view]
+        cache = self.chunk_img_cache[self.view]
         for xyz in self.visible_chunks:
             self.world_surf.blit(cache[xyz] if xyz in cache else self.get_chunk_img(*xyz), xyz[:2])
         
@@ -71,28 +71,26 @@ class ChunkRenderer:
                 if (tile_name := self.get_tile_name(tile_x + x, tile_y + y)) != 'air':
                     img.blit(self.assets.get_img(tile_name), (x * TILE_SIZE, y * TILE_SIZE))
         
-        self.img_cache[self.view][(chunk_x, chunk_y, chunk_z)] = img
+        self.chunk_img_cache[self.view][(chunk_x, chunk_y, chunk_z)] = img
         return img
 
-    def update_tile_in_chunk(self, tile_x, tile_y, name, hardness=None):
-        chunk_tile_x = tile_x // self.chunk_tile_size
-        chunk_tile_y = tile_y // self.chunk_tile_size
-
-        chunk_px_x = ((tile_x * TILE_SIZE) // self.chunk_px_size) * self.chunk_px_size
-        chunk_px_y = ((tile_y * TILE_SIZE) // self.chunk_px_size) * self.chunk_px_size
-
+    def update_tile_in_chunk(self, tile_x, tile_y, tile_z, name, hardness=None):
+        chunk_tile_x, chunk_tile_y = tile_x // self.chunk_tile_size, tile_y // self.chunk_tile_size
+        chunk_tile_z = tile_z if (chunk_tile_x, chunk_tile_y) == (tile_x, tile_y) else int(self.proc_gen.z_map[chunk_tile_x, chunk_tile_y])
+        chunk_px_x, chunk_px_y = ((tile_x * TILE_SIZE) // self.chunk_px_size) * self.chunk_px_size, ((tile_y * TILE_SIZE) // self.chunk_px_size) * self.chunk_px_size
+        chunk_key = (chunk_px_x, chunk_px_y, chunk_tile_z)
         px_xy_in_chunk = (pg.Vector2(tile_x, tile_y) * TILE_SIZE) - pg.Vector2(chunk_px_x, chunk_px_y)
-        chunk_key = (chunk_px_x, chunk_px_y, int(self.proc_gen.z_map[chunk_tile_x, chunk_tile_y]))
-        # TODO: check between placing/removing tiles after tile placing is added
-        for view in (v for v in self.view_types if chunk_key in self.img_cache[v]):
-            self.img_cache[view][chunk_key].blit(self.get_tile_below_img(view, tile_x, tile_y, name, hardness), px_xy_in_chunk)
+        for view in (v for v in self.view_types if chunk_key in self.chunk_img_cache[v]):
+            self.chunk_img_cache[view][chunk_key].blit(self.get_tile_below_img(view, tile_x, tile_y, name, hardness), px_xy_in_chunk)
 
     def get_tile_z_idx(self, tile_x, tile_y):
         match self.view:
             case 'surface': 
                 return self.proc_gen.z_map[tile_x, tile_y]
+
             case 'z slice': 
                 return self.player.z
+
             case 'elevation': 
                 return self.proc_gen.z_dif_map[self.player.z][tile_x, tile_y]
 
@@ -147,10 +145,18 @@ class ChunkRenderer:
         match self.view:
             case 'z slice': 
                 return self.z_slice_cache
+
             case 'elevation': 
                 return self.elev_view_cache
+
             case 'surface': 
                 return self.surface_view_cache
+
+    def update_chunk_img_cache_key(self, x, y, old_z, new_z):
+        for view in (v for v in self.view_types if (x, y, old_z) in self.chunk_img_cache[v]):
+            img = self.chunk_img_cache[view][(x, y, old_z)]
+            del self.chunk_img_cache[view][(x, y, old_z)]
+            self.chunk_img_cache[view][(x, y, new_z)] = img
 
     def update(self):
         for view_type in self.view_types:

@@ -6,7 +6,7 @@ from player_inventory_ui import PlayerInventoryUI
 from settings import TILE_SIZE, MAP_TILE_SIZE, TILE_REACH_RADIUS
 
 class UI:
-    def __init__(self, cam, proc_gen, player, keyboard, mouse, chunk_renderer, weather, assets, clock, village):
+    def __init__(self, cam, proc_gen, player, keyboard, mouse, chunk_renderer, weather, assets):
         self.mouse = mouse
         self.assets = assets
         self.chunk_renderer = chunk_renderer
