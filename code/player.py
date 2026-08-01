@@ -43,21 +43,16 @@ class Player(Villager):
         keys = self.keyboard.pressed_keys
         if (dx := keys[KEY_BINDINGS['+x']] - keys[KEY_BINDINGS['-x']]) != 0:
             x = max(0, min(self.x + dx, MAP_TILE_SIZE[0] - 1))
-            dx *= TILE_SIZE
             
         if (dy := keys[KEY_BINDINGS['+y']] - keys[KEY_BINDINGS['-y']]) != 0:
             y = max(0, min(self.y + dy, MAP_TILE_SIZE[1] - 1))
-            dy *= TILE_SIZE
         
         if (x, y) != (self.x, self.y):
             z = int(self.proc_gen.z_map[x, y])
             if self.proc_gen.tile_map[x, y, z] == self.proc_gen.tile_ids['air'] or z > self.z + TILE_REACH_RADIUS:
                 x, y, z = self.x, self.y, self.z
-                dx, dy = 0, 0
-        else:
-            dx, dy = 0, 0
 
-        return dx, dy, (x, y, z)
+        return (x - self.x) * TILE_SIZE, (y - self.y) * TILE_SIZE, (x, y, z)
 
     def update_facing_dir(self, dx):
         if dx == TILE_SIZE and self.facing_dir == 'left': 
