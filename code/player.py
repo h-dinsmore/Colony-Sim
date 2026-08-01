@@ -19,7 +19,8 @@ class Player(Villager):
 
     def move(self):
         dx, dy, xyz = self.get_movement_data()
-        if (dx, dy) != (0, 0):
+       
+        if (dx, dy) != (0, 0): 
             self.x, self.y = xyz[:2]
             self.rect.move_ip(dx, dy)
             self.biome_in = self.proc_gen.id_biomes[int(self.proc_gen.biome_map[self.x, self.y])]
@@ -48,12 +49,13 @@ class Player(Villager):
             y = max(0, min(self.y + dy, MAP_TILE_SIZE[1] - 1))
             dy *= TILE_SIZE
         
-        if x != self.x or y != self.y:
+        if (x, y) != (self.x, self.y):
             z = int(self.proc_gen.z_map[x, y])
-
-        if (x, y, z) != (self.x, self.y, self.z) and (self.proc_gen.tile_map[x, y, z] == self.proc_gen.tile_ids['air'] or \
-            z > self.z + TILE_REACH_RADIUS):
-            x, y, z = self.x, self.y, self.z
+            if self.proc_gen.tile_map[x, y, z] == self.proc_gen.tile_ids['air'] or z > self.z + TILE_REACH_RADIUS:
+                x, y, z = self.x, self.y, self.z
+                dx, dy = 0, 0
+        else:
+            dx, dy = 0, 0
 
         return dx, dy, (x, y, z)
 

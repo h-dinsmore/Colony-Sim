@@ -179,10 +179,6 @@ class Villager(pg.sprite.Sprite):
             self.item_holding_img.set_alpha(200)
             self.item_holding_bg = pg.transform.scale(self.item_holding_bg, pg.Vector2(tile_size_scaled))
 
-    @property
-    def tile_xy(self):
-        return self.rect.centerx // TILE_SIZE, self.rect.centery // TILE_SIZE
-
     def update(self):
         for alarm in self.alarms.values():
             alarm.update()

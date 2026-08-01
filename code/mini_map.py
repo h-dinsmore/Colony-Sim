@@ -54,9 +54,8 @@ class MiniMap:
 
     def render_tiles(self, screen): 
         if self.check_display_update():
-            player_tile_x, player_tile_y = self.player.tile_xy
-            map_start_x = max(0, min(int(player_tile_x) - (self.tiles_across // 2), self.max_start_tile_x))
-            map_start_y = max(0, min(int(player_tile_y) - (self.tiles_across // 2), self.max_start_tile_y))
+            map_start_x = max(0, min(int(self.player.x) - (self.tiles_across // 2), self.max_start_tile_x))
+            map_start_y = max(0, min(int(self.player.y) - (self.tiles_across // 2), self.max_start_tile_y))
             chunk_start_x = (map_start_x // self.chunk_tiles_across) * self.chunk_tiles_across
             chunk_start_y = (map_start_y // self.chunk_tiles_across) * self.chunk_tiles_across
             
@@ -85,7 +84,7 @@ class MiniMap:
         update = False
         new_cam_offset = self.cam.offset != self.prev_cam_offset
         new_view = self.prev_view != self.chunk_renderer.view
-        new_seen_tile = self.seen_tiles[*self.player.tile_xy, self.player.z] == False
+        new_seen_tile = self.seen_tiles[self.player.x, self.player.y, self.player.z] == False
         new_z = self.prev_z != self.player.z
         if new_cam_offset or new_view or new_seen_tile or new_z:
             if new_cam_offset:
@@ -97,7 +96,7 @@ class MiniMap:
                 update = True
             
             if new_seen_tile:
-                self.update_seen_tiles(*self.player.tile_xy)
+                self.update_seen_tiles(self.player.x, self.player.y)
                 update = True
 
             if new_z:
