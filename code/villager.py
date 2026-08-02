@@ -103,13 +103,13 @@ class Villager(pg.sprite.Sprite):
                     self.proc_gen.update_z_dif_map_tile(x, y, z, new_z)
 
                 self.ui.mini_map.update_chunk_img_cache_key(x, y, z, new_z)
-                self.chunk_renderer.update_img_cache_key(x, y, z, new_z)
+                self.chunk_renderer.update_chunk_img_cache_key(x, y, z, new_z)
 
             if self.is_player:
                 self.tile_remove_check = False
                 self.alarms['update tile remove check'].start()
         
-        self.chunk_renderer.update_tile_in_chunk(x, y, z, name, hardness_map[idx])
+        self.chunk_renderer.update_tile_in_chunk(x, y, name, hardness_map[idx])
 
     def get_tool_strength(self):
         if self.item_holding is None:
@@ -160,7 +160,7 @@ class Villager(pg.sprite.Sprite):
             self.chunk_renderer.update_chunk_img_cache_key(x, y, z, self.proc_gen.z_map[x, y])
 
         self.ui.mini_map.update_tile_in_chunk(x, y, z, self.item_holding)
-        self.chunk_renderer.update_tile_in_chunk(x, y, z, self.item_holding)
+        self.chunk_renderer.update_tile_in_chunk(x, y, self.item_holding)
         self.update_inv(self.item_holding, remove=True) # keep this last in case it changes item_holding
 
     def render_item_holding(self):
