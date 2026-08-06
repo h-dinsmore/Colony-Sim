@@ -71,23 +71,25 @@ class PlayerInventoryUI:
         num_slots_filled = len(self.player.inv)
         for x in range(self.num_cols):
             for y in range(self.num_rows if self.open else 1):
-                slot_has_item = (inv_idx := (self.num_cols * y) + x) < (num_slots_filled if self.open else min(self.num_cols, num_slots_filled))
+                inv_idx = (self.num_cols * y) + x
+                slot_has_item = inv_idx < (num_slots_filled if self.open else min(self.num_cols, num_slots_filled))
 
                 if mouse_overlap and (x, y) == self.col_row_overlap:
                     self.render_mouse_overlap(surf, x, y, slot_has_item, inv_idx, screen)
                 
                 if slot_has_item:
-                    if (item_name := list(self.player.inv)[inv_idx]) not in self.item_surfs:
-                        self.item_surfs[item_name] = pg.transform.scale(
-                            self.assets.get_img(item_name), 
+                    item_key = list(self.player.inv)[inv_idx]
+                    if (file_name := ' '.join(item_key.split(' ')[:-1])) not in self.item_surfs:
+                        self.item_surfs[file_name] = pg.transform.scale(
+                            self.assets.get_img(file_name), 
                             (self.slot_len * 0.75, self.slot_len * 0.75)
                         )
                     surf.blit(
-                        self.item_surfs[item_name], 
-                        self.item_surfs[item_name].get_rect(center=(pg.Vector2(x, y) * self.slot_len) + half_slot_len)
+                        self.item_surfs[file_name], 
+                        self.item_surfs[file_name].get_rect(center=(pg.Vector2(x, y) * self.slot_len) + half_slot_len)
                     )
-
-                    if (item_amount := str(self.player.inv[item_name]['amount'])) not in self.assets.font_text_cache['inv item amounts']:
+                    
+                    if (item_amount := str(self.player.inv[item_key]['amount'])) not in self.assets.font_text_cache['inv item amounts']:
                         self.assets.font_text_cache['inv item amounts'][item_amount] = self.assets.fonts['inv item amounts'].render(
                             item_amount, self.ui.anti_alias, self.ui.font_color
                         )

@@ -31,7 +31,6 @@ class Villager(pg.sprite.Sprite):
         self.num_inv_slots = 64
         self.max_slot_storage = 64
         self.item_holding, self.item_holding_img = None, None
-        self.item_holding_outline_w = 1
         self.item_holding_bg = pg.Surface((TILE_SIZE, TILE_SIZE), pg.SRCALPHA)
         self.item_holding_bg.fill((255, 255, 255))
         
@@ -128,13 +127,18 @@ class Villager(pg.sprite.Sprite):
             self.remove_inv_item(item_name, item_amount)
 
     def add_inv_item(self, name, amount):
-        if name not in self.inv and len(self.inv) < self.num_inv_slots:
-            self.inv[name] = {'amount': amount, 'idx': len(self.inv)}
+        if f'{name} 0' not in self.inv:
+            if len(self.inv) < self.num_inv_slots:
+                self.inv[f'{name} 0'] = {'amount': amount, 'idx': len(self.inv)}
         else:
-            if (slot_amount := min(self.max_slot_storage, self.inv[name]['amount'] + amount)) <= self.max_slot_storage:
-                self.inv[name]['amount'] = slot_amount
-            else: # update the dictionary to have each slot of the same item be <name> 0,1,... and check if there's any remaining wood from the slot reaching its capacity
-                remainder = amount - slot_amount
+            num_slots_with_item = len([k for k in self.inv if name in k])
+            current_slot = self.inv[f'{name} {num_slots_with_item - 1}']
+            if (new_slot_amount := (current_slot['amount'] + amount)) <= self.max_slot_storage:
+                current_slot['amount'] = new_slot_amount
+            
+            elif len(self.inv) < self.num_inv_slots:
+                current_slot['amount'] = self.max_slot_storage
+                self.inv[f'{name} {num_slots_with_item}'] = {'amount': new_slot_amount - self.max_slot_storage, 'idx': num_slots_with_item}
 
     def remove_inv_item(self, name, amount):
         self.inv[name]['amount'] -= amount
