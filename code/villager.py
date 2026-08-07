@@ -113,8 +113,8 @@ class Villager(pg.sprite.Sprite):
     def get_tool_strength(self):
         if self.item_holding is None:
             return 1
-        else:
-            pass
+        
+        return 10
 
     def update_inv(self, item_name, add=False, remove=False):
         if item_name in TREES:
@@ -141,11 +141,17 @@ class Villager(pg.sprite.Sprite):
                 self.inv[f'{name} {num_slots_with_item}'] = {'amount': new_slot_amount - self.max_slot_storage, 'idx': num_slots_with_item}
 
     def remove_inv_item(self, name, amount):
-        self.inv[name]['amount'] -= amount
-        if self.inv[name]['amount'] == 0:
-            del self.inv[name]
-            if name not in self.inv:
+        num_slots_with_item = len([k for k in self.inv if name in k])
+        slot = self.inv[f'{name} {num_slots_with_item - 1}']
+        slot['amount'] -= amount
+        if slot['amount'] == 0:
+            idx = slot['idx']
+            del self.inv[f'{name} {num_slots_with_item - 1}']
+            if num_slots_with_item == 1:
                 self.item_holding = None
+
+            for slot_k in [k for k in self.inv if self.inv[k]['idx'] > idx]:
+                self.inv[slot_k]['idx'] -= 1
 
     def place_tile(self, x, y, z):
         if self.item_holding in SURFACE_TERRAIN:

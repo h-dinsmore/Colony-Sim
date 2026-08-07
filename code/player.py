@@ -92,10 +92,13 @@ class Player(Villager):
     def update_item_holding(self):
         old_item = self.item_holding
         col, row = self.ui.player_inv_ui.col_row_overlap
-        if (slot_num := (self.ui.player_inv_ui.num_cols * row) + col) < len(self.inv):
-            self.item_holding = list(self.inv)[slot_num]
+        if (slot_idx := (self.ui.player_inv_ui.num_cols * row) + col) < len(self.inv):
+            item_key = list(self.inv)[slot_idx].split(' ')
+            self.item_holding = ' '.join(item_key[:-1])
+            self.ui.player_inv_ui.item_key_idx = item_key[-1]
         else:
             self.item_holding = None
+            self.ui.player_inv_ui.item_key_idx = None
 
         if self.item_holding != old_item:
             self.update_item_holding_img()

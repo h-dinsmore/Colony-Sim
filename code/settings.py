@@ -16,7 +16,9 @@ KEY_BINDINGS = {
     'mini map view': pg.K_m,
     'info ui view': pg.K_TAB,
     'player inv view': pg.K_i,
-    'open/close player inv': pg.K_j
+    'open/close player inv': pg.K_j,
+    'swap inv slot items': pg.K_RALT,
+    'delete inv item': pg.K_DELETE
 }
 
 TILE_SIZE = 16
